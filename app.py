@@ -12,7 +12,6 @@ st.set_page_config(
 # Título Principal
 st.title("🚜 EDOS SpA - Generador de Presupuestos")
 st.caption("Cálculo operativo, tarifa por m³, condiciones comerciales y propuesta formal.")
-
 st.markdown("---")
 
 # ---------------------------------------------------------
@@ -63,13 +62,12 @@ costo_subcontrato_total = 0.0
 if modalidad_ejecucion == "Subcontrato Completo / Todo Incluido (Tarifa cerrada por m³)":
     st.info("💡 En esta modalidad, el subcontratista asume toda la maquinaria, transporte y botadero. Solo debes indicar cuánto te cobra por m³ esponjado.")
     costo_subcontrato_m3 = st.number_input(
-        "Costo del Subcontrato por m³ esponjado ($/m³)",
-        min_value=0.0,
-        value=3200.0,
+        "Costo del Subcontrato por m³ esponjado ($/m³)", 
+        min_value=0.0, 
+        value=3200.0, 
         step=100.0
     )
     costo_interno_total = volumen_esponjado * costo_subcontrato_m3
-
 else:
     # ---------------------------------------------------------
     # MODALIDAD DESGLOSADA (MAQUINARIA, TRANSPORTE, MITIGACIONES)
@@ -84,18 +82,18 @@ else:
             precio_petroleo = st.number_input("Precio Petróleo ($/litro)", min_value=0.0, value=1150.0, step=10.0)
         with col_m4:
             consumo_l_hr = st.number_input("Consumo Excavadora (L/hr)", min_value=0.0, value=22.0, step=1.0)
-
+        
         horas_diarias_est = st.number_input("Horas operativas estimadas por día", min_value=1, value=8, step=1)
+        
         horas_totales_maquinaria = duracion_dias * horas_diarias_est * num_excavadoras
-
         costo_maquinaria = horas_totales_maquinaria * tarifa_excavadora_hr
         costo_combustible = horas_totales_maquinaria * consumo_l_hr * precio_petroleo
 
     with st.expander("🚛 Transporte y Botadero", expanded=True):
         tarifa_transporte_m3 = st.number_input(
-            "Tarifa transporte + botadero autorizado ($/m³ esponjado)",
-            min_value=0.0,
-            value=3200.0,
+            "Tarifa transporte + botadero autorizado ($/m³ esponjado)", 
+            min_value=0.0, 
+            value=3200.0, 
             step=100.0
         )
         costo_transporte = volumen_esponjado * tarifa_transporte_m3
@@ -118,11 +116,11 @@ else:
             costo_topografia = costo_topografia_global
 
     costo_interno_total = (
-        costo_maquinaria +
-        costo_combustible +
-        costo_transporte +
-        costo_aljibe +
-        costo_paleteros +
+        costo_maquinaria + 
+        costo_combustible + 
+        costo_transporte + 
+        costo_aljibe + 
+        costo_paleteros + 
         costo_topografia
     )
 
@@ -181,12 +179,12 @@ st.markdown("---")
 # RESUMEN ECONÓMICO
 # ---------------------------------------------------------
 st.subheader("📊 Resumen Económico e Impuestos")
-
 col_r1, col_r2, col_r3 = st.columns(3)
+
 col_r1.metric("Costo Interno (Ejecución)", f"${costo_interno_total:,.0f} CLP".replace(",", "."))
 col_r2.metric(
-    "Oferta Total Neto",
-    f"${oferta_total_neto:,.0f} CLP".replace(",", "."),
+    "Oferta Total Neto", 
+    f"${oferta_total_neto:,.0f} CLP".replace(",", "."), 
     delta=f"Margen: {margen_porcentaje:.1f}%"
 )
 col_r3.metric("Total Bruto (incl. IVA)", f"${total_bruto:,.0f} CLP".replace(",", "."))
@@ -264,7 +262,7 @@ def generar_pdf():
     pdf = PDFPresupuesto()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    
+
     # Encabezado
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 7, "PRESUPUESTO DE RETIRO Y MOVIMIENTO DE TIERRAS", 0, 1, "L")
@@ -346,9 +344,10 @@ def generar_pdf():
     pdf.set_font("Arial", "", 9)
     pdf.cell(0, 5, "EDOS SpA", 0, 1, "R")
 
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    return bytes(pdf.output())
 
 col_bot1, col_bot2 = st.columns(2)
+
 with col_bot1:
     pdf_bytes = generar_pdf()
     st.download_button(
