@@ -5,7 +5,7 @@ st.set_page_config(
 )
 
 st.title("🚜 EDOS SpA - Generador de Presupuestos")
-st.markdown("Cálculo operativo, margen comercial inverso y formato de propuesta formal.")
+st.markdown("Cálculo operativo, tarifa por m³ y formato de propuesta formal.")
 
 # --- 0. DATOS DEL CLIENTE Y OBRA ---
 with st.expander("📄 Datos del Mandante y Ubicación", expanded=True):
@@ -102,19 +102,38 @@ costo_total_interno = (
     + costo_topografo
 )
 
-# --- 6. OFERTA COMERCIAL AL MANDANTE (MODO DUAL) ---
+# --- 6. OFERTA COMERCIAL AL MANDANTE (TRES MODOS) ---
 st.subheader("6. Oferta Comercial al Mandante")
 modo_comercial = st.radio(
     "¿Cómo deseas definir la oferta?",
-    ("Definir por Porcentaje de Margen (%)", "Ingresar Precio Final Objetivo ($)")
+    (
+        "Ingresar Precio Unitario al Mandante ($/m³)",
+        "Definir por Porcentaje de Margen (%)",
+        "Ingresar Precio Final Objetivo ($)"
+    )
 )
 
-if modo_comercial == "Definir por Porcentaje de Margen (%)":
+if modo_comercial == "Ingresar Precio Unitario al Mandante ($/m³)":
+    precio_unitario_final = st.number_input(
+        "Precio Unitario Final para el Mandante ($/m³)",
+        min_value=0.0,
+        value=16500.0,
+        step=500.0
+    )
+    precio_final_mandante = precio_unitario_final * volumen_corte
+    if costo_total_interno > 0:
+        margen_mandante = ((precio_final_mandante - costo_total_interno) / costo_total_interno) * 100
+    else:
+        margen_mandante = 0.0
+
+elif modo_comercial == "Definir por Porcentaje de Margen (%)":
     margen_mandante = st.slider(
         "Margen por Responsabilidad y Firma (%)",
         min_value=0.0, max_value=40.0, value=15.0, step=1.0
     )
     precio_final_mandante = costo_total_interno * (1 + (margen_mandante / 100))
+    precio_unitario_final = precio_final_mandante / volumen_corte if volumen_corte > 0 else 0
+
 else:
     precio_final_mandante = st.number_input(
         "Precio Final Total a Cobrar al Mandante ($)",
@@ -126,8 +145,7 @@ else:
         margen_mandante = ((precio_final_mandante - costo_total_interno) / costo_total_interno) * 100
     else:
         margen_mandante = 0.0
-
-precio_unitario_final = precio_final_mandante / volumen_corte if volumen_corte > 0 else 0
+    precio_unitario_final = precio_final_mandante / volumen_corte if volumen_corte > 0 else 0
 
 # --- RESULTADOS FINANCIEROS INTERNOS ---
 st.divider()
@@ -139,7 +157,7 @@ with col1:
 with col2:
     st.metric("Total Oferta Mandante", f"${precio_final_mandante:,.0f} CLP", delta=f"Margen: {margen_mandante:.1f}%")
 
-st.info(f"💡 **Precio Unitario Calculado para el Mandante:** ${precio_unitario_final:,.2f} / m³")
+st.info(f"💡 **Precio Unitario Asignado:** ${precio_unitario_final:,.2f} / m³")
 
 # --- GENERADOR Y VISTA PREVIA DE PROPUESTA FORMAL ESTILO EDOS SPA ---
 st.divider()
@@ -147,7 +165,7 @@ st.subheader("📋 Vista Previa de la Propuesta Formal")
 
 propuesta_formal = f"""### **PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS**
 
-* **Para:** {cliente_input}
+* **Para:** {cliente_input}[cite: 1]
 * **De:** EDOS SpA[cite: 1]
 * **Ubicación:** {ubicacion_input}[cite: 1]
 
@@ -177,9 +195,7 @@ El presente presupuesto contempla únicamente la disposición de la maquinaria y
 ---
 **Vicente Ortiz Amestelli - EDOS SpA**[cite: 1]"""
 
-# Mostrar la propuesta renderizada con diseño elegante en pantalla
 st.markdown(propuesta_formal)
 
-# Bloque de código secundario por si se quiere copiar con un solo botón limpio
 with st.expander("📥 Ver texto plano para copiar"):
     st.code(propuesta_formal, language="markdown")
