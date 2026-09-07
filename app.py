@@ -165,35 +165,35 @@ st.subheader("📋 Vista Previa de la Propuesta Formal")
 
 propuesta_formal = f"""### **PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS**
 
-* **Para:** {cliente_input}[cite: 1]
-* **De:** EDOS SpA[cite: 1]
-* **Ubicación:** {ubicacion_input}[cite: 1]
+* **Para:** {cliente_input}
+* **De:** EDOS SpA
+* **Ubicación:** {ubicacion_input}
 
 ---
 
-#### **1. Detalle del Servicio y Valores**[cite: 1]
-Retiro de aproximadamente {volumen_corte:,.0f} metros cúbicos de material, medidos esponjados sobre camión[cite: 1]. El servicio incluye el uso de maquinaria y el transporte correspondiente a un botadero autorizado[cite: 1].
+#### **1. Detalle del Servicio y Valores**
+Retiro de aproximadamente {volumen_corte:,.0f} metros cúbicos de material, medidos esponjados sobre camión. El servicio incluye el uso de maquinaria y el transporte correspondiente a un botadero autorizado.
 
 | Descripción | Cantidad Estimada | Precio Unitario Neto | Total Neto Estimado |
 | :--- | :---: | :---: | :---: |
-| Servicio completo de retiro / excavación[cite: 1] | {volumen_corte:,.0f} $m^3$[cite: 1] | ${precio_unitario_final:,.0f} / m^3$[cite: 1] | ${precio_final_mandante:,.0f}[cite: 1] |
+| Servicio completo de retiro / excavación | {volumen_corte:,.0f} m³ | ${precio_unitario_final:,.0f} / m³ | ${precio_final_mandante:,.0f} |
 
-#### **2. Condición de Ajuste**[cite: 1]
-Los metros cúbicos finales se ajustarán estrictamente a la cantidad real extraída en terreno, la cual será debidamente controlada mediante los vales de carga emitidos por la empresa[cite: 1].
+#### **2. Condición de Ajuste**
+Los metros cúbicos finales se ajustarán strictly a la cantidad real extraída en terreno, la cual será debidamente controlada mediante los vales de carga emitidos por la empresa.
 
-#### **3. Delimitación de Logística y Responsabilidades**[cite: 1]
-La gestión de las maquinarias y el flujo de los camiones en el interior de la obra se realizará siguiendo exclusivamente las directrices y bajo la planificación logística de la constructora[cite: 1]. EDOS SpA ejecutará el servicio acatando las instrucciones específicas de la constructora (tales como frentes de inicio de excavación), quedando eximida de toda responsabilidad ante eventuales incidentes o accidentes que ocurran dentro de la faena derivados de dicha coordinación interna[cite: 1].
+#### **3. Delimitación de Logística y Responsabilidades**
+La gestión de las maquinarias y el flujo de los camiones en el interior de la obra se realizará siguiendo exclusivamente las directrices y bajo la planificación logística de la constructora. EDOS SpA ejecutará el servicio acatando las instrucciones específicas de la constructora (tales como frentes de inicio de excavación), quedando eximida de toda responsabilidad ante eventuales incidentes o accidentes que ocurran dentro de la faena derivados de dicha coordinación interna.
 
-#### **4. Exclusiones y Obligaciones de la Constructora**[cite: 1]
-El presente presupuesto contempla únicamente la disposición de la maquinaria y los camiones de transporte[cite: 1]. Por lo tanto, quedan expresamente excluidos de la responsabilidad de EDOS SpA y bajo cargo directo de la constructora los siguientes conceptos[cite: 1]:
-* Suministro de agua para el control de polución y mitigación ambiental[cite: 1].
-* Implementación y mantención de medidas de control de contaminación (Malla Rachel, lavado y limpieza de ruedas de camiones antes de salir de la faena)[cite: 1].
-* Cierre perimetral de seguridad de la obra[cite: 1].
-* Personal de seguridad vial y control de tránsito (paleteros)[cite: 1].
-* Permisos municipales, autorizaciones regulatorias y derechos asociados[cite: 1].
+#### **4. Exclusiones y Obligaciones de la Constructora**
+El presente presupuesto contempla únicamente la disposición de la maquinaria y los camiones de transporte. Por lo tanto, quedan expresamente excluidos de la responsabilidad de EDOS SpA y bajo cargo directo de la constructora los siguientes conceptos:
+* Suministro de agua para el control de polución y mitigación ambiental.
+* Implementación y mantención de medidas de control de contaminación (Malla Rachel, lavado y limpieza de ruedas de camiones antes de salir de la faena).
+* Cierre perimetral de seguridad de la obra.
+* Personal de seguridad vial y control de tránsito (paleteros).
+* Permisos municipales, autorizaciones regulatorias y derechos asociados.
 
 ---
-**Vicente Ortiz Amestelli - EDOS SpA**[cite: 1]"""
+**Vicente Ortiz Amestelli - EDOS SpA**"""
 
 st.markdown(propuesta_formal)
 
