@@ -34,11 +34,10 @@ with col_m2:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 1. PARÁMETROS GENERALES, CUBICACIÓN Y RENDIMIENTO DIARIO
+# 1. PARÁMETROS GENERALES, CUBICACIÓN Y TIEMPOS
 # ---------------------------------------------------------
 st.subheader("1. Parámetros Generales, Cubicaciones y Tiempos")
 
-# Criterio de Medición Explícito
 criterio_medicion = st.radio(
     "Criterio / Base de Medición de Volumen",
     [
@@ -48,7 +47,7 @@ criterio_medicion = st.radio(
     index=0,
 )
 
-col_v1, col_v2, col_v3, col_v4 = st.columns(4)
+col_v1, col_v2 = st.columns(2)
 
 with col_v1:
   volumen_banco = st.number_input(
@@ -75,7 +74,7 @@ if criterio_medicion == "Volumen Geométrico en Banco (Topografía)":
       " (Factor 1.00)."
   )
   texto_control_volumen = (
-      "El volumen final será controlado y cubicado estrictamente mediante"
+      "El volumen final será controlado y cubicado strictly mediante"
       " levantamiento topográfico de terreno en banco (cota inicial vs. cota"
       " final)."
   )
@@ -103,31 +102,62 @@ else:
       " de control de salida de camiones en obra."
   )
 
-with col_v3:
-  m3_diarios_est = st.number_input(
-      f"Rendimiento Estimado ({unidad_medicion}/día)",
-      min_value=10.0,
-      value=350.0,
-      step=25.0,
-  )
+st.markdown("#### ⏱️ Planificación de Tiempos y Rendimientos")
 
-# Cálculo automático de días de faena según el rendimiento
-duracion_dias = math.ceil(volumen_cobrar / m3_diarios_est)
+modo_tiempo = st.radio(
+    "Definición de Plazo de Ejecución",
+    [
+        "Calcular días según rendimiento estimado (m³/día)",
+        "Fijar días de faena impuestos por el Mandante (recalcula m³/día necesarios)",
+    ],
+    index=0,
+)
 
-with col_v4:
+col_t1, col_t2, col_t3 = st.columns(3)
+
+if modo_tiempo == "Calcular días según rendimiento estimado (m³/día)":
+  with col_t1:
+    m3_diarios_est = st.number_input(
+        f"Rendimiento Estimado ({unidad_medicion}/día)",
+        min_value=10.0,
+        value=350.0,
+        step=25.0,
+    )
+  duracion_dias = math.ceil(volumen_cobrar / m3_diarios_est)
+  with col_t2:
+    st.number_input(
+        "Duración Calculada de Faena (días)", value=duracion_dias, disabled=True
+    )
+else:
+  with col_t2:
+    duracion_dias = st.number_input(
+        "Días de Faena Impuestos por Mandante", min_value=1, value=5, step=1
+    )
+  m3_diarios_est = volumen_cobrar / duracion_dias
+  with col_t1:
+    st.number_input(
+        f"Rendimiento Requerido ({unidad_medicion}/día)",
+        value=m3_diarios_est,
+        disabled=True,
+    )
+
+capacidad_camion = 15.0
+viajes_camion_dia = math.ceil(
+    (volumen_banco * factor_esponjamiento) / (duracion_dias * capacidad_camion)
+)
+
+with col_t3:
   st.number_input(
-      "Duración Calculada de Faena (días)",
-      value=duracion_dias,
+      "Flujo Estimado de Camiones (viajes/día)",
+      value=viajes_camion_dia,
       disabled=True,
-      help=(
-          "Calculado automáticamente como: Volumen a Cobrar / Rendimiento"
-          " Diario"
-      ),
   )
 
 st.info(
-    f"💡 **Criterio Seleccionado:** {texto_esponjamiento_nota} | **Tiempo"
-    f" Estimado de Ejecución:** {duracion_dias} días de faena."
+    f"💡 **Criterio Seleccionado:** {texto_esponjamiento_nota} | **Planificación:**"
+    f" {duracion_dias} días de faena requerirán un retiro diario de"
+    f" **{m3_diarios_est:,.0f} m³/día** (~**{viajes_camion_dia} viajes de"
+    " camión/día**).".replace(",", ".")
 )
 
 st.markdown("---")
@@ -150,6 +180,8 @@ costo_transporte = 0.0
 costo_paleteros = 0.0
 costo_aljibe = 0.0
 costo_topografia = 0.0
+costo_maquinaria_extra = 0.0
+detalles_maq_extra = []
 
 if (
     modalidad_ejecucion
@@ -162,8 +194,9 @@ if (
       step=100.0,
   )
   costo_interno_total = volumen_cobrar * costo_subcontrato_m3
+
 else:
-  with st.expander("⚙️ Maquinaria de Excavación y Carga", expanded=True):
+  with st.expander("⚙️ Maquinaria Principal de Excavación y Carga", expanded=True):
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
       num_excavadoras = st.number_input(
@@ -194,6 +227,62 @@ else:
     )
     costo_maquinaria = horas_totales_maquinaria * tarifa_excavadora_hr
     costo_combustible = horas_totales_maquinaria * consumo_l_hr * precio_petroleo
+
+  # --- SECCIÓN NUEVA: MAQUINARIA ADICIONAL / SOLICITADA POR MANDANTE ---
+  with st.expander("🛠️ Maquinaria y Equipos Adicionales (Opcional / Requeridos)", expanded=False):
+    st.caption("Agrega equipos solicitados expresamente por la obra (Retroexcavadora, Minicargador, Motoniveladora, Camión Interno, etc.)")
+    
+    incluye_extra = st.checkbox("¿Incluir maquinaria o equipos adicionales?")
+    if incluye_extra:
+      num_equipos_extra = st.number_input("Cantidad de tipos de equipos a agregar", min_value=1, max_value=5, value=1, step=1)
+      
+      for i in range(num_equipos_extra):
+        st.markdown(f"**Equipo Extra N° {i+1}**")
+        col_e1, col_e2, col_e3, col_e4, col_e5 = st.columns([2, 1.5, 1.5, 1.5, 1.5])
+        
+        with col_e1:
+          nombre_eq = st.selectbox(
+              f"Tipo de Equipo #{i+1}",
+              ["Retroexcavadora", "Minicargador (Bobcat)", "Camión Tolva Interno", "Motoniveladora", "Rodillo Compactador", "Otro"],
+              key=f"eq_nom_{i}"
+          )
+          if nombre_eq == "Otro":
+            nombre_eq = st.text_input(f"Especificar equipo #{i+1}", "Equipo Especial", key=f"eq_custom_{i}")
+            
+        with col_e2:
+          modalidad_tarifa = st.selectbox("Modalidad Cobro", ["Valor por Hora", "Valor Diario"], key=f"eq_mod_{i}")
+          
+        with col_e3:
+          incluye_combustible = st.selectbox("Petróleo / Combustible", ["Incluido (Seco)", "No Incluido (Suma Petróleo)"], key=f"eq_pet_{i}")
+          
+        with col_e4:
+          tarifa_eq = st.number_input(f"Tarifa ({modalidad_tarifa.split()[-1]}) ($)", min_value=0.0, value=35000.0 if "Hora" in modalidad_tarifa else 250000.0, step=5000.0, key=f"eq_tar_{i}")
+          
+        with col_e5:
+          cant_tiempo = st.number_input(f"Cantidad ({'Horas Totales' if 'Hora' in modalidad_tarifa else 'Días Totales'})", min_value=1, value=duracion_dias * 8 if "Hora" in modalidad_tarifa else duracion_dias, step=1, key=f"eq_cant_{i}")
+
+        subtotal_eq = tarifa_eq * cant_tiempo
+        costo_petroleo_eq = 0.0
+
+        if incluye_combustible == "No Incluido (Suma Petróleo)":
+          col_p1, col_p2 = st.columns(2)
+          with col_p1:
+            consumo_eq_l = st.number_input(f"Consumo Estimado L/{'hr' if 'Hora' in modalidad_tarifa else 'día'}", min_value=0.0, value=12.0, step=1.0, key=f"eq_con_{i}")
+          with col_p2:
+            costo_petroleo_eq = consumo_eq_l * cant_tiempo * precio_petroleo
+            st.caption(f"Costo Petróleo Adicional: ${costo_petroleo_eq:,.0f} CLP".replace(",", "."))
+
+        subtotal_total_eq = subtotal_eq + costo_petroleo_eq
+        costo_maquinaria_extra += subtotal_total_eq
+        
+        detalles_maq_extra.append({
+            "equipo": nombre_eq,
+            "modalidad": modalidad_tarifa,
+            "combustible": incluye_combustible,
+            "cantidad": cant_tiempo,
+            "subtotal": subtotal_total_eq
+        })
+        st.divider()
 
   with st.expander("🚛 Transporte y Botadero", expanded=True):
     tarifa_transporte_m3 = st.number_input(
@@ -240,6 +329,7 @@ else:
       + costo_aljibe
       + costo_paleteros
       + costo_topografia
+      + costo_maquinaria_extra
   )
 
 st.markdown("---")
@@ -351,9 +441,10 @@ st.subheader("📋 Vista Previa de la Propuesta Formal")
 
 texto_descripcion_servicio = (
     f"Retiro de aproximadamente {volumen_cobrar:,.0f} m³ de material,"
-    f" medidos bajo criterio de {unidad_medicion}. El tiempo estimado de"
-    f" ejecución es de {duracion_dias} días corridos, considerando un retiro"
-    f" promedio de {m3_diarios_est:,.0f} m³/día. Incluye gestión operativa,"
+    f" medidos bajo criterio de {unidad_medicion}. El tiempo de ejecución"
+    f" acordado es de {duracion_dias} días corridos, lo que exige un rendimiento"
+    f" medio de {m3_diarios_est:,.0f} m³/día (flujo estimado de"
+    f" {viajes_camion_dia} viajes de camión/día). Incluye gestión operativa,"
     " maquinaria y transporte a botadero autorizado."
 ).replace(",", ".")
 
@@ -361,18 +452,24 @@ st.markdown("### PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS")
 st.markdown(f"- **Para:** {cliente_nombre}")
 st.markdown("- **De:** EDOS SpA")
 st.markdown(f"- **Ubicación:** {ubicacion_obra}")
-st.markdown(f"- **Plazo Estimado de Ejecución:** {duracion_dias} días de faena")
+st.markdown(f"- **Plazo de Ejecución:** {duracion_dias} días de faena")
 st.markdown(f"- **Validez de la Oferta:** {validez_oferta} días corridos")
 
 st.markdown("#### 1. Detalle del Servicio y Valores")
 st.write(texto_descripcion_servicio)
 
-st.table([{
+tabla_detalle = [{
     "Descripción": f"Servicio completo de retiro / excavación ({unidad_medicion})",
     "Cantidad Estimada": f"{volumen_cobrar:,.0f} m³".replace(",", "."),
     "P. Unitario Neto": f"${pu_neto_mandante:,.0f} / m³".replace(",", "."),
     "Total Neto Estimado": f"${oferta_total_neto:,.0f}".replace(",", "."),
-}])
+}]
+
+st.table(tabla_detalle)
+
+if detalles_maq_extra:
+  st.markdown("##### 🛠️ Equipamiento Adicional Solicitado")
+  st.table(detalles_maq_extra)
 
 st.markdown(
     f"* **Subtotal neto:** ${oferta_total_neto:,.0f} CLP".replace(",", ".")
@@ -456,7 +553,7 @@ def generar_pdf():
   pdf.cell(0, 5, "De: EDOS SpA", 0, 1)
   pdf.cell(0, 5, clean_text(f"Ubicacion: {ubicacion_obra}"), 0, 1)
   pdf.cell(
-      0, 5, clean_text(f"Plazo Estimado: {duracion_dias} dias de faena"), 0, 1
+      0, 5, clean_text(f"Plazo Acordado: {duracion_dias} dias de faena"), 0, 1
   )
   pdf.cell(0, 5, f"Validez de la Oferta: {validez_oferta} dias corridos", 0, 1)
   pdf.ln(3)
@@ -488,6 +585,23 @@ def generar_pdf():
       40, 6, clean_text(f"${oferta_total_neto:,.0f}".replace(",", ".")), 1, 1, "R"
   )
   pdf.ln(3)
+
+  if detalles_maq_extra:
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(0, 5, "Equipamiento Adicional Solicitado:", 0, 1)
+    pdf.set_font("Arial", "", 8)
+    for eq in detalles_maq_extra:
+      pdf.cell(
+          0,
+          4,
+          clean_text(
+              f"- {eq['equipo']} ({eq['modalidad']}): {eq['cantidad']}"
+              f" unidades/horas - {eq['combustible']}"
+          ),
+          0,
+          1,
+      )
+    pdf.ln(3)
 
   pdf.set_font("Arial", "", 9)
   pdf.cell(110, 5, "", 0, 0)
@@ -562,12 +676,15 @@ with col_bot2:
       "volumen_banco": volumen_banco,
       "factor_esponjamiento": factor_esponjamiento,
       "volumen_cobrar": volumen_cobrar,
+      "modo_tiempo": modo_tiempo,
       "m3_diarios_est": m3_diarios_est,
       "duracion_dias_faena": duracion_dias,
+      "viajes_camion_dia_est": viajes_camion_dia,
       "costo_interno_total": costo_interno_total,
       "pu_neto_mandante": pu_neto_mandante,
       "oferta_total_neto": oferta_total_neto,
       "total_bruto": total_bruto,
+      "equipos_adicionales": detalles_maq_extra,
   }
   st.download_button(
       label="💾 Guardar parámetros (JSON)",
