@@ -5,7 +5,7 @@ st.set_page_config(
 )
 
 st.title("🚜 EDOS SpA - Generador de Presupuestos")
-st.markdown("Cálculo operativo, margen comercial y formato de propuesta formal.")
+st.markdown("Cálculo operativo, margen comercial inverso y formato de propuesta formal.")
 
 # --- 0. DATOS DEL CLIENTE Y OBRA ---
 with st.expander("📄 Datos del Mandante y Ubicación", expanded=True):
@@ -102,38 +102,53 @@ costo_total_interno = (
     + costo_topografo
 )
 
-# --- 6. OFERTA COMERCIAL AL MANDANTE ---
-st.subheader("6. Margen Comercial y Oferta Final")
-margen_mandante = st.slider(
-    "Margen por Responsabilidad y Firma de Contrato (%)",
-    min_value=0.0,
-    max_value=40.0,
-    value=15.0,
-    step=1.0,
+# --- 6. OFERTA COMERCIAL AL MANDANTE (MODO DUAL) ---
+st.subheader("6. Oferta Comercial al Mandante")
+modo_comercial = st.radio(
+    "¿Cómo deseas definir la oferta?",
+    ("Definir por Porcentaje de Margen (%)", "Ingresar Precio Final Objetivo ($)")
 )
 
-precio_final_mandante = costo_total_interno * (1 + (margen_mandante / 100))
+if modo_comercial == "Definir por Porcentaje de Margen (%)":
+    margen_mandante = st.slider(
+        "Margen por Responsabilidad y Firma (%)",
+        min_value=0.0, max_value=40.0, value=15.0, step=1.0
+    )
+    precio_final_mandante = costo_total_interno * (1 + (margen_mandante / 100))
+else:
+    precio_final_mandante = st.number_input(
+        "Precio Final Total a Cobrar al Mandante ($)",
+        min_value=float(costo_total_interno),
+        value=float(costo_total_interno * 1.15),
+        step=100000.0
+    )
+    if costo_total_interno > 0:
+        margen_mandante = ((precio_final_mandante - costo_total_interno) / costo_total_interno) * 100
+    else:
+        margen_mandante = 0.0
+
 precio_unitario_final = precio_final_mandante / volumen_corte if volumen_corte > 0 else 0
 
-# --- RESULTADOS ---
+# --- RESULTADOS FINANCIEROS INTERNOS ---
 st.divider()
-st.subheader("📊 Resumen Económico")
+st.subheader("📊 Resumen Económico Interno")
 
 col1, col2 = st.columns(2)
 with col1:
-    st.metric("Costo Interno", f"${costo_total_interno:,.0f} CLP")
+    st.metric("Costo Interno (Ejecución)", f"${costo_total_interno:,.0f} CLP")
 with col2:
-    st.metric("Total Oferta Mandante", f"${precio_final_mandante:,.0f} CLP", delta=f"+{margen_mandante}%")
+    st.metric("Total Oferta Mandante", f"${precio_final_mandante:,.0f} CLP", delta=f"Margen: {margen_mandante:.1f}%")
 
 st.info(f"💡 **Precio Unitario Calculado para el Mandante:** ${precio_unitario_final:,.2f} / m³")
 
-# --- GENERADOR DE DOCUMENTO OFICIAL EDOS SPA ---
+# --- GENERADOR Y VISTA PREVIA DE PROPUESTA FORMAL ESTILO EDOS SPA ---
 st.divider()
-if st.button("📋 Generar Propuesta Formal Estilo EDOS SpA"):
-    propuesta_formal = f"""### **PRESUPUESTO DE SERVICIO DE RETIRO / MOVIMIENTO DE TIERRA**
+st.subheader("📋 Vista Previa de la Propuesta Formal")
+
+propuesta_formal = f"""### **PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS**
 
 * **Para:** {cliente_input}
-* **De:** EDOS SpA
+* **De:** EDOS SpA[cite: 1]
 * **Ubicación:** {ubicacion_input}[cite: 1]
 
 ---
@@ -143,18 +158,18 @@ Retiro de aproximadamente {volumen_corte:,.0f} metros cúbicos de material, medi
 
 | Descripción | Cantidad Estimada | Precio Unitario Neto | Total Neto Estimado |
 | :--- | :---: | :---: | :---: |
-| Servicio completo de retiro / excavación | {volumen_corte:,.0f} $m^3$[cite: 1] | ${precio_unitario_final:,.0f} / m^3$[cite: 1] | ${precio_final_mandante:,.0f}[cite: 1] |
+| Servicio completo de retiro / excavación[cite: 1] | {volumen_corte:,.0f} $m^3$[cite: 1] | ${precio_unitario_final:,.0f} / m^3$[cite: 1] | ${precio_final_mandante:,.0f}[cite: 1] |
 
 #### **2. Condición de Ajuste**[cite: 1]
-Los metros cúbicos finales se ajustarán estrictamente al volumen real extraído en terreno, el cual será debidamente controlado mediante los vales de carga emitidos[cite: 1].
+Los metros cúbicos finales se ajustarán estrictamente a la cantidad real extraída en terreno, la cual será debidamente controlada mediante los vales de carga emitidos por la empresa[cite: 1].
 
 #### **3. Delimitación de Logística y Responsabilidades**[cite: 1]
-La gestión de las maquinarias y el flujo de los camiones en el interior de la obra se realizará siguiendo exclusivamente las directrices y bajo la planificación logística de la constructora[cite: 1]. EDOS SpA ejecutará el servicio acatando las instrucciones específicas (tales como frentes de inicio), quedando eximida de toda responsabilidad ante eventuales incidentes o accidentes que ocurran dentro de la faena derivados de dicha coordinación interna[cite: 1].
+La gestión de las maquinarias y el flujo de los camiones en el interior de la obra se realizará siguiendo exclusivamente las directrices y bajo la planificación logística de la constructora[cite: 1]. EDOS SpA ejecutará el servicio acatando las instrucciones específicas de la constructora (tales como frentes de inicio de excavación), quedando eximida de toda responsabilidad ante eventuales incidentes o accidentes que ocurran dentro de la faena derivados de dicha coordinación interna[cite: 1].
 
 #### **4. Exclusiones y Obligaciones de la Constructora**[cite: 1]
-El presente presupuesto contempla únicamente la disposición de la maquinaria y los camiones de transporte[cite: 1]. Quedan expresamente excluidos de la responsabilidad de EDOS SpA y bajo cargo directo de la constructora los siguientes conceptos[cite: 1]:
+El presente presupuesto contempla únicamente la disposición de la maquinaria y los camiones de transporte[cite: 1]. Por lo tanto, quedan expresamente excluidos de la responsabilidad de EDOS SpA y bajo cargo directo de la constructora los siguientes conceptos[cite: 1]:
 * Suministro de agua para el control de polución y mitigación ambiental[cite: 1].
-* Implementación y mantención de medidas de control de contaminación (Malla Rachel, lavado y limpieza de ruedas)[cite: 1].
+* Implementación y mantención de medidas de control de contaminación (Malla Rachel, lavado y limpieza de ruedas de camiones antes de salir de la faena)[cite: 1].
 * Cierre perimetral de seguridad de la obra[cite: 1].
 * Personal de seguridad vial y control de tránsito (paleteros)[cite: 1].
 * Permisos municipales, autorizaciones regulatorias y derechos asociados[cite: 1].
@@ -162,4 +177,9 @@ El presente presupuesto contempla únicamente la disposición de la maquinaria y
 ---
 **Vicente Ortiz Amestelli - EDOS SpA**[cite: 1]"""
 
+# Mostrar la propuesta renderizada con diseño elegante en pantalla
+st.markdown(propuesta_formal)
+
+# Bloque de código secundario por si se quiere copiar con un solo botón limpio
+with st.expander("📥 Ver texto plano para copiar"):
     st.code(propuesta_formal, language="markdown")
