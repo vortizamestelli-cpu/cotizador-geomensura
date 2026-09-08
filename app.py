@@ -408,13 +408,14 @@ margen_monto = oferta_total_neto - costo_interno_total
 margen_porcentaje = (margen_monto / oferta_total_neto * 100.0) if oferta_total_neto > 0 else 0.0
 
 # ---------------------------------------------------------
-# RESUMEN ECONÓMICO
+# RESUMEN ECONÓMICO E IMPUESTOS
 # ---------------------------------------------------------
 st.subheader("📊 Resumen Económico e Impuestos")
-col_r1, col_r2, col_r3 = st.columns(3)
+col_r1, col_r2, col_r3, col_r4 = st.columns(4)
 col_r1.metric("Costo Interno Total", f"${costo_interno_total:,.0f}".replace(",", "."))
-col_r2.metric("Oferta Total Neto", f"${oferta_total_neto:,.0f}".replace(",", "."), delta=f"Margen: {margen_porcentaje:.1f}%")
-col_r3.metric("Total Bruto (incl. IVA)", f"${total_bruto:,.0f}".replace(",", "."))
+col_r2.metric("Subtotal Neto Oferta", f"${oferta_total_neto:,.0f}".replace(",", "."), delta=f"Margen: {margen_porcentaje:.1f}%")
+col_r3.metric("Monto IVA (19%)", f"${iva_monto:,.0f}".replace(",", "."))
+col_r4.metric("Total Bruto", f"${total_bruto:,.0f}".replace(",", "."))
 
 st.markdown("---")
 
@@ -448,6 +449,12 @@ items_tabla.append({
 
 st.table(items_tabla)
 
+# Cuadro con desglose de Subtotal Neto, IVA y Total Bruto
+col_t1, col_t2, col_t3 = st.columns(3)
+col_t1.write(f"**Subtotal Neto:** ${oferta_total_neto:,.0f}".replace(",", "."))
+col_t2.write(f"**IVA (19%):** ${iva_monto:,.0f}".replace(",", "."))
+col_t3.write(f"**Total Bruto:** ${total_bruto:,.0f}".replace(",", "."))
+
 st.markdown("#### Condiciones Comerciales y Legales")
 st.markdown(f"- **Forma de Pago:** {condicion_pago}.")
 st.markdown(f"- **Control de Volumen y Logística:** {texto_control_volumen}")
@@ -468,7 +475,8 @@ Resumen de la Oferta:
 - Volumen Estimado: {volumen_cobrar:,.0f} {unidad_medicion}
 - Plazo de Ejecución: {duracion_dias} días de faena
 - Precio Unitario Neto: ${pu_neto_mandante:,.0f} / m³
-- Total Neto Oferta: ${oferta_total_neto:,.0f} CLP
+- Subtotal Neto Oferta: ${oferta_total_neto:,.0f} CLP
+- Monto IVA (19%): ${iva_monto:,.0f} CLP
 - Total Bruto (incl. IVA): ${total_bruto:,.0f} CLP
 
 Quedamos atentos a sus comentarios para coordinar el inicio de las actividades en terreno.
@@ -482,7 +490,7 @@ dos.oficinacv@gmail.com
 
 
 # ---------------------------------------------------------
-# GENERACIÓN DE PDF Y JSON (CORREGIDO PARA FPDF2)
+# GENERACIÓN DE PDF CORREGIDA Y JSON
 # ---------------------------------------------------------
 def generar_pdf():
     pdf = FPDF()
@@ -567,7 +575,6 @@ def generar_pdf():
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 6, limpiar_texto(f"{representante} - EDOS SpA"), ln=True, align="R")
 
-    # Retorna la salida en bytes directa para compatibilidad con Streamlit
     return bytes(pdf.output())
 
 
@@ -595,6 +602,7 @@ with col_bot2:
         "costo_interno_total": costo_interno_total,
         "pu_neto_mandante": pu_neto_mandante,
         "oferta_total_neto": oferta_total_neto,
+        "monto_iva": iva_monto,
         "total_bruto": total_bruto
     }
     st.download_button(
