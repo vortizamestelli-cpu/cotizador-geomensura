@@ -1,22 +1,14 @@
 import streamlit as st
 from fpdf import FPDF
 
-# --- FUNCIÓN DE LIMPIEZA DE TEXTO PARA FPDF (Evita caracteres UTF-8 no soportados en latin-1) ---
+# --- FUNCIÓN DE LIMPIEZA DE TEXTO PARA FPDF ---
 def limpiar_texto(texto):
     if not isinstance(texto, str):
         return texto
     
     reemplazos = {
-        "³": "3",
-        "²": "2",
-        "°": " deg",
-        "–": "-",
-        "—": "-",
-        "“": '"',
-        "”": '"',
-        "‘": "'",
-        "’": "'",
-        "…": "...",
+        "³": "3", "²": "2", "°": " deg", "–": "-", "—": "-",
+        "“": '"', "”": '"', "‘": "'", "’": "'", "…": "...",
         "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
         "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
         "ñ": "n", "Ñ": "N"
@@ -26,7 +18,37 @@ def limpiar_texto(texto):
     return texto
 
 
-# --- CONFIGURACIÓN DE PÁGINA STREAMLIT ---
+# --- BASE DE DATOS TÉCNICA: FACTORES DE ESPONJAMIENTO MÍN/MÁX Y RECOMENDADO ---
+TABLA_ESPONJAMIENTO = {
+    "Tierra Común / Limos (Dificultad Normal)": {
+        "factor_sugerido": 1.20,
+        "rango": "20% - 25%",
+        "desc": "Terreno vegetal, limos y arenas consolidadas."
+    },
+    "Arcilla Seca / Compacta": {
+        "factor_sugerido": 1.30,
+        "rango": "25% - 35%",
+        "desc": "Arcillas secas, firmes o de cohesión media."
+    },
+    "Arcilla Húmeda / Pegajosa": {
+        "factor_sugerido": 1.40,
+        "rango": "35% - 45%",
+        "desc": "Arcillas plásticas con alta retención de agua."
+    },
+    "Grave y Grava Cohesiva / Maicillo": {
+        "factor_sugerido": 1.15,
+        "rango": "10% - 20%",
+        "desc": "Materiales granulares de composición mixta."
+    },
+    "Roca Fragmentada / Tronada": {
+        "factor_sugerido": 1.50,
+        "rango": "40% - 65%",
+        "desc": "Roca desintegrada mecánicamente o mediante explosivos."
+    }
+}
+
+
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Cotizador Profesional EDOS SpA",
     page_icon="🚜",
@@ -45,15 +67,43 @@ cliente = st.sidebar.text_input("Cliente / Constructora", "Constructora Minimal"
 ubicacion = st.sidebar.text_input("Ubicación de la Obra", "Avenida El Salto 2255, Recoleta")
 representante = st.sidebar.text_input("Representante EDOS SpA", "Vicente Ortiz Amestelli")
 
-# 2. Cubicaciones y Terreno
+# 2. Cubicaciones, Suelo y Esponjamiento Dinámico
 st.sidebar.subheader("1. Cubicaciones y Suelo")
 criterio_volumen = st.sidebar.radio(
     "Criterio / Base de Medición de Volumen",
     ["Volumen Geométrico en Banco (Topografía)", "Volumen Esponjado (Sobre Camión)"]
 )
 volumen_util = st.sidebar.number_input("Volumen Geométrico en Banco (m³)", min_value=1.0, value=2914.0, step=10.0)
-clasificacion_suelo = st.sidebar.selectbox("Clasificación del Terreno", ["Tierra Común / Limos (Dificultad Normal)", "Roca / Terreno Duro"])
-factor_esponjamiento = st.sidebar.number_input("Factor Esponjamiento", min_value=1.0, max_value=2.0, value=1.0, step=0.05)
+
+# Selección del tipo de terreno
+clasificacion_suelo = st.sidebar.selectbox(
+    "Clasificación del Terreno",
+    list(TABLA_ESPONJAMIENTO.keys())
+)
+
+# Datos de referencia según el suelo elegido
+info_suelo = TABLA_ESPONJAMIENTO[clasificacion_suelo]
+
+# Sugerencia técnica en pantalla
+st.sidebar.info(
+    f"💡 **Sugerencia Técnica:**\n"
+    f"- Esponjamiento típico: **{info_suelo['rango']}**\n"
+    f"- Factor recomendado: **{info_suelo['factor_sugerido']:.2f}**\n"
+    f"_{info_suelo['desc']}_"
+)
+
+# Entrada interactiva del factor con el valor recomendado por defecto
+factor_esponjamiento = st.sidebar.number_input(
+    "Factor de Esponjamiento Aplicado",
+    min_value=1.0,
+    max_value=2.0,
+    value=info_suelo["factor_sugerido"],
+    step=0.05,
+    help="El factor multiplica el volumen geométrico en banco para estimar el volumen en camión."
+)
+
+# Cálculo del volumen esponjado real a extraer
+volumen_esponjado_real = volumen_util * factor_esponjamiento
 
 # 3. Logística
 st.sidebar.subheader("🚛 Logística de Transporte")
@@ -70,7 +120,7 @@ dias_totales = st.sidebar.number_input("Duración Calculada de Faena (días)", v
 st.sidebar.subheader("7. Oferta Comercial")
 precio_unitario_neto = st.sidebar.number_input("Precio Unitario Final Neto ($/m³)", value=15750.0)
 
-# 6. Condiciones Comercial
+# 6. Condiciones Comerciales
 st.sidebar.subheader("📜 Condiciones")
 validez_oferta = st.sidebar.number_input("Validez Oferta (días)", value=15)
 minimo_horas_garantizadas = st.sidebar.number_input("Mínimo Horas Diarias Garantizadas", value=8)
@@ -79,16 +129,29 @@ condicion_pago = st.sidebar.text_input("Condición de Pago", "A tratar según pr
 # Cálculos Derivados
 oferta_total_neto = volumen_util * precio_unitario_neto
 total_bruto = oferta_total_neto * 1.19
-texto_control_volumen = "El volumen final será controlado y cubicado strictly mediante levantamiento topográfico de terreno en banco (cota inicial vs. cota final)."
+num_viajes_estimados = int(-(-volumen_esponjado_real // capacidad_camion)) # Redondeo hacia arriba
+
+texto_control_volumen = (
+    f"El volumen base se cubicará en banco mediante topografía. "
+    f"Considerando un factor de esponjamiento de {factor_esponjamiento:.2f} ({clasificacion_suelo}), "
+    f"se estima un volumen real a transportar en camión de aproximadamente {volumen_esponjado_real:,.0f} m³ "
+    f"({num_viajes_estimados} viajes de camión de {capacidad_camion:.0f} m³)."
+)
 
 # --- VISTA PREVIA EN INTERFAZ ---
 st.subheader("📋 Vista Previa de la Propuesta Formal")
-st.markdown(f"**PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS**")
+st.markdown("**PRESUPUESTO DE SERVICIO DE RETIRO Y MOVIMIENTO DE TIERRAS**")
 st.write(f"- **Para:** {cliente}")
 st.write(f"- **De:** EDOS SpA")
 st.write(f"- **Ubicación:** {ubicacion}")
 st.write(f"- **Plazo de Ejecución:** {dias_totales} días de faena")
 st.write(f"- **Validez de la Oferta:** {validez_oferta} días corridos")
+
+# Tarjetas informativas de cubicación
+col1, col2, col3 = st.columns(3)
+col1.metric("Volumen Banco (Topografía)", f"{volumen_util:,.0f} m³".replace(",", "."))
+col2.metric("Factor Esponjamiento", f"{factor_esponjamiento:.2f}")
+col3.metric("Volumen Estimado a Retirar", f"{volumen_esponjado_real:,.0f} m³".replace(",", "."))
 
 st.table([
     {
@@ -101,20 +164,19 @@ st.table([
 
 st.subheader("Condiciones Comerciales y Legales")
 st.write(f"- **Forma de Pago:** {condicion_pago}")
-st.write(f"- **Control de Volumen:** {texto_control_volumen}")
+st.write(f"- **Control de Volumen y Esponjamiento:** {texto_control_volumen}")
 st.write(f"- **Mínimo Diario Garantizado:** Se establece un mínimo de {minimo_horas_garantizadas} horas/día por equipo contratado.")
 st.write("- **Stand-by por Clima o Paralización Imputable:** En caso de paralización de la obra por causas ajenas a EDOS SpA o eventos meteorológicos, se facturará la tarifa de stand-by correspondiente al mínimo diario garantizado de los equipos en obra.")
 
 st.write(f"*{representante} - EDOS SpA*")
 
 
-# --- FUNCIÓN GENERADORA DE PDF CORREGIDA ---
+# --- FUNCIÓN GENERADORA DE PDF ---
 def generar_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Ancho útil disponible de la página A4 (210mm total - márgenes)
     ancho_util = pdf.w - pdf.l_margin - pdf.r_margin
 
     # Encabezado
@@ -153,13 +215,12 @@ def generar_pdf():
 
     pdf.set_font("Helvetica", "", 9)
     
-    # Reset del cursor horizontal antes de cada multi_cell
     pdf.set_x(pdf.l_margin)
     pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Forma de Pago: {condicion_pago}"))
     pdf.ln(2)
 
     pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Control de Volumen: {texto_control_volumen}"))
+    pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Control de Volumen y Esponjamiento: {texto_control_volumen}"))
     pdf.ln(2)
 
     pdf.set_x(pdf.l_margin)
@@ -175,7 +236,6 @@ def generar_pdf():
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 6, limpiar_texto(f"{representante} - EDOS SpA"), ln=True, align="R")
 
-    # Retorna directamente los bytes del PDF generado para Streamlit
     return bytes(pdf.output())
 
 
