@@ -79,7 +79,7 @@ condicion_pago = st.sidebar.text_input("Condición de Pago", "A tratar según pr
 # Cálculos Derivados
 oferta_total_neto = volumen_util * precio_unitario_neto
 total_bruto = oferta_total_neto * 1.19
-texto_control_volumen = "El volumen final será controlado y cubicado estrictamente mediante levantamiento topográfico de terreno en banco (cota inicial vs. cota final)."
+texto_control_volumen = "El volumen final será controlado y cubicado strictly mediante levantamiento topográfico de terreno en banco (cota inicial vs. cota final)."
 
 # --- VISTA PREVIA EN INTERFAZ ---
 st.subheader("📋 Vista Previa de la Propuesta Formal")
@@ -145,7 +145,7 @@ def generar_pdf():
     pdf.cell(35, 7, limpiar_texto(f"${oferta_total_neto:,.0f}".replace(",", ".")), 1, 1, "R")
     pdf.ln(8)
 
-    # Sección de Condiciones Comerciales (AQUÍ SE RESUELVE EL ERROR)
+    # Sección de Condiciones Comerciales
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 7, limpiar_texto("Condiciones Comerciales y Legales"), ln=True)
@@ -175,7 +175,8 @@ def generar_pdf():
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 6, limpiar_texto(f"{representante} - EDOS SpA"), ln=True, align="R")
 
-    return pdf.output(dest="S").encode("latin-1", errors="replace")
+    # Retorna directamente los bytes del PDF generado para Streamlit
+    return bytes(pdf.output())
 
 
 # --- BOTÓN DE DESCARGA PDF ---
