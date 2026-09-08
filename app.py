@@ -90,7 +90,6 @@ st.markdown("---")
 # ---------------------------------------------------------
 st.subheader("📄 Datos del Mandante, Folio y Ubicación")
 
-# Fecha actual por defecto del sistema
 fecha_actual_str = date.today().strftime("%d-%m-%Y")
 
 col_f1, col_f2, col_f3 = st.columns(3)
@@ -364,7 +363,6 @@ else:
     subtotal_mov_tierra = st.number_input("Precio Final Neto Objetivo Movimiento Tierra ($)", min_value=0.0, value=45895500.0)
     pu_neto_mandante = subtotal_mov_tierra / volumen_cobrar if volumen_cobrar > 0 else 0.0
 
-# Oferta Total Neto = Mov. Tierra + Demolición + Todos los equipos adicionales
 oferta_total_neto = subtotal_mov_tierra + costo_total_demolicion + costo_total_maq_adicional
 
 iva_monto = oferta_total_neto * 0.19
@@ -464,7 +462,7 @@ dos.oficinacv@gmail.com
 
 
 # ---------------------------------------------------------
-# GENERACIÓN DE PDF Y JSON
+# GENERACIÓN DE PDF Y JSON ORDENADO
 # ---------------------------------------------------------
 def generar_pdf():
     pdf = FPDF()
@@ -564,29 +562,44 @@ with col_bot1:
     )
 
 with col_bot2:
+    # JSON estructurado por categorías para evitar "muchos corchetes" caóticos y facilitar lectura
     datos_json = {
-        "folio": folio_presupuesto,
-        "fecha_emision": fecha_emision,
-        "cliente": cliente_nombre,
-        "profesional_cliente": profesional_cliente,
-        "ubicacion": ubicacion_obra,
-        "criterio_medicion": criterio_medicion,
-        "volumen_banco": volumen_ingresado,
-        "factor_esponjamiento": factor_esponjamiento if "Banco" in criterio_medicion else 1.0,
-        "tipo_suelo": tipo_suelo,
-        "volumen_cobrar": volumen_cobrar,
-        "duracion_dias_faena": duracion_dias,
-        "camiones_simultaneos": camiones_simultaneos,
-        "costo_interno_total": costo_interno_total,
-        "pu_neto_mandante": pu_neto_mandante,
-        "oferta_total_neto": oferta_total_neto,
-        "monto_iva": iva_monto,
-        "total_bruto": total_bruto,
-        "maquinaria_adicional": lista_maq_adicionales
+        "metadata": {
+            "folio": folio_presupuesto,
+            "fecha_emision": fecha_emision,
+            "validez_oferta_dias": validez_oferta
+        },
+        "mandante": {
+            "empresa": cliente_nombre,
+            "profesional_atencion": profesional_cliente,
+            "ubicacion_obra": ubicacion_obra,
+            "representante_edos": representante
+        },
+        "cubicacion_y_logistica": {
+            "criterio_medicion": criterio_medicion,
+            "volumen_ingresado": volumen_ingresado,
+            "factor_esponjamiento": factor_esponjamiento if "Banco" in criterio_medicion else 1.0,
+            "clasificacion_suelo": tipo_suelo,
+            "volumen_cobrar": volumen_cobrar,
+            "duracion_dias_faena": duracion_dias,
+            "camiones_simultaneos": camiones_simultaneos
+        },
+        "desglose_financiero": {
+            "costo_interno_total": costo_interno_total,
+            "subtotal_neto_oferta": oferta_total_neto,
+            "monto_iva": iva_monto,
+            "total_bruto": total_bruto
+        },
+        "servicios_y_maquinaria_adicional": {
+            "demolicion_incluida": incluir_demolicion,
+            "costo_demolicion": costo_total_demolicion,
+            "equipos_adicionales": lista_maq_adicionales
+        }
     }
+    
     st.download_button(
         label="💾 Guardar parámetros (JSON)",
-        data=json.dumps(datos_json, indent=4),
+        data=json.dumps(datos_json, indent=4, ensure_ascii=False),
         file_name=f"Parametros_{folio_presupuesto}.json",
         mime="application/json"
     )
