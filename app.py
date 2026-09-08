@@ -91,7 +91,7 @@ st.subheader("📄 Datos del Mandante y Ubicación")
 col_m1, col_m2 = st.columns(2)
 with col_m1:
     cliente_nombre = st.text_input("Empresa (Cliente / Constructora)", "Constructora Minimal")
-    profesional_cliente = st.text_input("Atención a (Profesional a cargo)", "Juan Pérez - Director de Obra")
+    profesional_cliente = st.text_input("Atención a (Profesional a cargo)", "Eduardo Tobar - Administrador de Obra")
 with col_m2:
     ubicacion_obra = st.text_input("Ubicación de la Obra", "Avenida El Salto 2255, Recoleta")
     representante = st.text_input("Representante EDOS SpA", "Vicente Ortiz Amestelli")
@@ -138,7 +138,9 @@ criterio_medicion = st.radio(
 col_v1, col_v2, col_v3 = st.columns(3)
 
 with col_v1:
-    volumen_banco = st.number_input("Volumen Geométrico en Banco (m³)", min_value=1.0, value=2914.00, step=10.0)
+    # Cambio dinámico del nombre del campo según lo elegido
+    label_vol = "Volumen Geométrico en Banco (m³)" if "Banco" in criterio_medicion else "Volumen Esponjado a Retirar (m³)"
+    volumen_ingresado = st.number_input(label_vol, min_value=1.0, value=2914.00, step=10.0)
 
 with col_v2:
     tipo_suelo = st.selectbox(
@@ -155,7 +157,8 @@ st.info(
     f"_{info_suelo['desc']}_"
 )
 
-if criterio_medicion == "Volumen Geométrico en Banco (Topografía)":
+# Lógica corregida para la aplicación de esponjamiento
+if "Banco" in criterio_medicion:
     with col_v3:
         factor_esponjamiento = st.number_input(
             "Factor Esponjamiento Aplicado",
@@ -164,30 +167,29 @@ if criterio_medicion == "Volumen Geométrico en Banco (Topografía)":
             value=info_suelo["factor_sugerido"],
             step=0.05
         )
-    volumen_cobrar = volumen_banco
+    volumen_cobrar = volumen_ingresado
+    volumen_esponjado_real = volumen_ingresado * factor_esponjamiento
     unidad_medicion = "m³ geométricos (en banco / topografía)"
     texto_control_volumen = (
         f"El volumen base se cubicará en banco mediante levantamiento topográfico (cota inicial vs. cota final). "
         f"Considerando un factor de esponjamiento de {factor_esponjamiento:.2f} ({tipo_suelo}), "
-        f"se estima un volumen real a retirar en camión de {volumen_banco * factor_esponjamiento:,.0f} m³."
+        f"se estima un volumen real a retirar en camión de {volumen_esponjado_real:,.0f} m³."
     )
 else:
     with col_v3:
         factor_esponjamiento = st.number_input(
             "Factor Esponjamiento Aplicado",
-            min_value=1.01,
-            max_value=2.00,
-            value=info_suelo["factor_sugerido"],
-            step=0.05
+            value=1.00,
+            disabled=True,
+            help="Al medir sobre camión, el volumen ya está esponjado."
         )
-    volumen_cobrar = volumen_banco * factor_esponjamiento
+    volumen_cobrar = volumen_ingresado
+    volumen_esponjado_real = volumen_ingresado  # No se multiplica porque ya viene esponjado
     unidad_medicion = "m³ esponjados (sobre camión)"
     texto_control_volumen = (
         "El volumen final acumulado queda sujeto a control estricto mediante la emisión y firma "
         "de vales de carga o registro diario de salida de camiones en obra."
     )
-
-volumen_esponjado_real = volumen_banco * factor_esponjamiento
 
 # --- MÓDULO LOGÍSTICO Y CICLO DE CAMIONES ---
 st.markdown("#### 🚛 Logística de Transporte y Botadero")
@@ -195,9 +197,9 @@ col_l1, col_l2, col_l3 = st.columns(3)
 with col_l1:
     distancia_botadero_km = st.number_input("Distancia a Botadero (Km ida/vuelta)", min_value=1.0, value=35.0, step=5.0)
 with col_l2:
-    capacidad_camion = st.number_input("Capacidad del Camión (m³ tolva)", min_value=10.0, value=15.0, step=1.0)
+    capacidad_camion = st.number_input("Capacidad del Camión (m³ tolva)", min_value=10.0, value=20.0, step=1.0)
 with col_l3:
-    tiempo_ciclo_min = st.number_input("Tiempo Estimado por Ciclo (minutos)", min_value=10, value=90, step=5)
+    tiempo_ciclo_min = st.number_input("Tiempo Estimado por Ciclo (minutos)", min_value=10, value=35, step=5)
 
 st.markdown("#### ⏱️ Planificación de Tiempos y Rendimientos")
 modo_tiempo = st.radio(
@@ -220,12 +222,12 @@ if modo_tiempo == "Calcular días según rendimiento estimado (m³/día)":
         st.number_input("Duración Calculada de Faena (días)", value=duracion_dias, disabled=True)
 else:
     with col_t2:
-        duracion_dias = st.number_input("Días de Faena Impuestos por Mandante", min_value=1, value=9, step=1)
+        duracion_dias = st.number_input("Días de Faena Impuestos por Mandante", min_value=1, value=11, step=1)
     m3_diarios_est = volumen_cobrar / duracion_dias
     with col_t1:
         st.number_input(f"Rendimiento Requerido ({unidad_medicion}/día)", value=m3_diarios_est, disabled=True)
 
-# Flujo teórico de camiones por día
+# Flujo teórico de camiones por día (usa el volumen esponjado real)
 viajes_totales = math.ceil(volumen_esponjado_real / capacidad_camion)
 viajes_camion_dia = math.ceil(viajes_totales / duracion_dias) if duracion_dias > 0 else viajes_totales
 camiones_simultaneos = math.ceil((viajes_camion_dia * (tiempo_ciclo_min / 60)) / 8)
@@ -596,8 +598,8 @@ with col_bot2:
         "profesional_cliente": profesional_cliente,
         "ubicacion": ubicacion_obra,
         "criterio_medicion": criterio_medicion,
-        "volumen_banco": volumen_banco,
-        "factor_esponjamiento": factor_esponjamiento,
+        "volumen_banco": volumen_ingresado,
+        "factor_esponjamiento": factor_esponjamiento if "Banco" in criterio_medicion else 1.0,
         "tipo_suelo": tipo_suelo,
         "volumen_cobrar": volumen_cobrar,
         "duracion_dias_faena": duracion_dias,
