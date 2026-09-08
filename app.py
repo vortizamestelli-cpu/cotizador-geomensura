@@ -88,12 +88,12 @@ st.markdown("---")
 # DATOS DE LA OBRA Y MANDANTE
 # ---------------------------------------------------------
 st.subheader("📄 Datos del Mandante y Ubicación")
-col_m1, col_m2, col_m3 = st.columns(3)
+col_m1, col_m2 = st.columns(2)
 with col_m1:
-    cliente_nombre = st.text_input("Para (Cliente / Constructora)", "Constructora Minimal")
+    cliente_nombre = st.text_input("Empresa (Cliente / Constructora)", "Constructora Minimal")
+    profesional_cliente = st.text_input("Atención a (Profesional a cargo)", "Juan Pérez - Director de Obra")
 with col_m2:
     ubicacion_obra = st.text_input("Ubicación de la Obra", "Avenida El Salto 2255, Recoleta")
-with col_m3:
     representante = st.text_input("Representante EDOS SpA", "Vicente Ortiz Amestelli")
 
 st.markdown("---")
@@ -426,6 +426,7 @@ st.subheader("📋 Vista Previa de la Propuesta Formal")
 
 st.markdown("**PRESUPUESTO DE SERVICIO DE DEMOLICIÓN Y MOVIMIENTO DE TIERRAS**")
 st.markdown(f"- **Para:** {cliente_nombre}")
+st.markdown(f"- **Atención:** {profesional_cliente}")
 st.markdown(f"- **De:** EDOS SpA ({representante})")
 st.markdown(f"- **Ubicación:** {ubicacion_obra}")
 st.markdown(f"- **Plazo de Ejecución:** {duracion_dias} días de faena (Rendimiento: {m3_diarios_est:,.0f} m³/día)")
@@ -467,9 +468,9 @@ st.caption(f"*{representante} - EDOS SpA*")
 # GENERADOR DE CORREO RÁPIDO
 # ---------------------------------------------------------
 with st.expander("✉️ Generar Texto para Correo Electrónico"):
-    cuerpo_email = f"""Estimados {cliente_nombre},
+    cuerpo_email = f"""Estimado/a {profesional_cliente},
 
-Junto con saludar, adjunto la propuesta comercial de EDOS SpA para el servicio de retiro de escombros y movimiento de tierras en la obra ubicada en {ubicacion_obra}.
+Junto con saludar, adjunto la propuesta comercial de EDOS SpA para el servicio de retiro de escombros y movimiento de tierras en la obra ubicada en {ubicacion_obra}, correspondiente a {cliente_nombre}.
 
 Resumen de la Oferta:
 - Volumen Estimado: {volumen_cobrar:,.0f} {unidad_medicion}
@@ -507,6 +508,7 @@ def generar_pdf():
     # Datos Principales
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Para: {cliente_nombre}"), ln=True)
+    pdf.cell(ancho_util, 6, limpiar_texto(f"- Atención: {profesional_cliente}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- De: {representante} (EDOS SpA)"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Ubicación: {ubicacion_obra}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Plazo de Ejecución: {duracion_dias} días de faena"), ln=True)
@@ -591,6 +593,7 @@ with col_bot1:
 with col_bot2:
     datos_json = {
         "cliente": cliente_nombre,
+        "profesional_cliente": profesional_cliente,
         "ubicacion": ubicacion_obra,
         "criterio_medicion": criterio_medicion,
         "volumen_banco": volumen_banco,
