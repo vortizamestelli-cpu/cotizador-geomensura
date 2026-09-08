@@ -1,5 +1,6 @@
 import json
 import math
+from datetime import date
 from fpdf import FPDF
 import streamlit as st
 
@@ -85,9 +86,21 @@ st.caption("Plataforma técnica-comercial para movimiento de tierras, demolicion
 st.markdown("---")
 
 # ---------------------------------------------------------
-# DATOS DE LA OBRA Y MANDANTE
+# DATOS DE LA OBRA, FECHA Y FOLIO
 # ---------------------------------------------------------
-st.subheader("📄 Datos del Mandante y Ubicación")
+st.subheader("📄 Datos del Mandante, Folio y Ubicación")
+
+# Fecha actual por defecto del sistema
+fecha_actual_str = date.today().strftime("%d-%m-%Y")
+
+col_f1, col_f2, col_f3 = st.columns(3)
+with col_f1:
+    fecha_emision = st.text_input("Fecha de Emisión", fecha_actual_str)
+with col_f2:
+    folio_presupuesto = st.text_input("Folio de Presupuesto", f"{fecha_actual_str}_A001")
+with col_f3:
+    validez_oferta = st.number_input("Validez Oferta (días)", value=15)
+
 col_m1, col_m2 = st.columns(2)
 with col_m1:
     cliente_nombre = st.text_input("Empresa (Cliente / Constructora)", "Constructora Minimal")
@@ -150,7 +163,7 @@ with col_serv2:
             with eq_col3:
                 unidad_eq = st.selectbox("Unidad", ["Horas", "Días", "Mes", "Global", "Viajes"], key=f"un_eq_{i}")
             with eq_col4:
-                precio_eq = st.number_input("P. Unitario ($)", min_value=0.0, value=35000.0, step=1000.0, key=f"prec_eq_{i}")
+                precio_eq = st.number_input("P. Unitario ($)", min_value=0.0, value=200000.0, step=5000.0, key=f"prec_eq_{i}")
             
             subtotal_eq = cant_eq * precio_eq
             costo_total_maq_adicional += subtotal_eq
@@ -309,12 +322,10 @@ st.markdown("---")
 # FINANZAS, PÓLIZAS Y FACTORING
 # ---------------------------------------------------------
 st.subheader("📜 Condiciones Comerciales, Garantías y Financiamiento")
-col_c1, col_c2, col_c3 = st.columns(3)
+col_c1, col_c2 = st.columns(2)
 with col_c1:
-    validez_oferta = st.number_input("Validez Oferta (días)", value=15)
-with col_c2:
     minimo_horas = st.number_input("Mínimo Horas Diarias Garantizadas", value=8)
-with col_c3:
+with col_c2:
     condicion_pago = st.text_input("Condición de Pago", "A tratar según previo acuerdo")
 
 with st.expander("🏦 Garantías, Pólizas y Factoring"):
@@ -378,7 +389,9 @@ st.markdown("---")
 # ---------------------------------------------------------
 st.subheader("📋 Vista Previa de la Propuesta Formal")
 
-st.markdown("**PRESUPUESTO DE SERVICIO DE MOVIMIENTO DE TIERRAS Y OBRAS ANEXAS**")
+st.markdown(f"**PRESUPUESTO DE SERVICIO DE MOVIMIENTO DE TIERRAS Y OBRAS ANEXAS (Folio: {folio_presupuesto})**")
+st.markdown(f"- **Fecha de Emisión:** {fecha_emision}")
+st.markdown(f"- **Folio:** {folio_presupuesto}")
 st.markdown(f"- **Para:** {cliente_nombre}")
 st.markdown(f"- **Atención:** {profesional_cliente}")
 st.markdown(f"- **De:** EDOS SpA ({representante})")
@@ -431,7 +444,7 @@ st.caption(f"*{representante} - EDOS SpA*")
 with st.expander("✉️ Generar Texto para Correo Electrónico"):
     cuerpo_email = f"""Estimado/a {profesional_cliente},
 
-Junto con saludar, adjunto la propuesta comercial de EDOS SpA para el servicio de retiro de escombros y movimiento de tierras en la obra ubicada en {ubicacion_obra}, correspondiente a {cliente_nombre}.
+Junto con saludar, adjunto la propuesta comercial de EDOS SpA (Folio: {folio_presupuesto}, Fecha: {fecha_emision}) para el servicio de retiro de escombros y movimiento de tierras en la obra ubicada en {ubicacion_obra}, correspondiente a {cliente_nombre}.
 
 Resumen de la Oferta:
 - Volumen Estimado: {volumen_cobrar:,.0f} {unidad_medicion}
@@ -461,10 +474,11 @@ def generar_pdf():
     ancho_util = pdf.w - pdf.l_margin - pdf.r_margin
 
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(ancho_util, 8, limpiar_texto("PRESUPUESTO DE SERVICIO DE MOVIMIENTO DE TIERRAS Y OBRAS ANEXAS"), ln=True, align="C")
+    pdf.cell(ancho_util, 8, limpiar_texto(f"PRESUPUESTO - FOLIO: {folio_presupuesto}"), ln=True, align="C")
     pdf.ln(4)
 
     pdf.set_font("Helvetica", "", 10)
+    pdf.cell(ancho_util, 6, limpiar_texto(f"- Fecha de Emisión: {fecha_emision}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Para: {cliente_nombre}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Atención: {profesional_cliente}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- De: {representante} (EDOS SpA)"), ln=True)
@@ -545,12 +559,14 @@ with col_bot1:
     st.download_button(
         label="📄 Descargar Presupuesto PDF",
         data=generar_pdf(),
-        file_name=f"Presupuesto_EDOS_{cliente_nombre.replace(' ', '_')}.pdf",
+        file_name=f"Presupuesto_{folio_presupuesto}_{cliente_nombre.replace(' ', '_')}.pdf",
         mime="application/pdf"
     )
 
 with col_bot2:
     datos_json = {
+        "folio": folio_presupuesto,
+        "fecha_emision": fecha_emision,
         "cliente": cliente_nombre,
         "profesional_cliente": profesional_cliente,
         "ubicacion": ubicacion_obra,
@@ -571,6 +587,6 @@ with col_bot2:
     st.download_button(
         label="💾 Guardar parámetros (JSON)",
         data=json.dumps(datos_json, indent=4),
-        file_name="parametros_cotizacion.json",
+        file_name=f"Parametros_{folio_presupuesto}.json",
         mime="application/json"
     )
