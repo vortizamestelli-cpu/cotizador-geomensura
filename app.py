@@ -126,49 +126,57 @@ factor_esponjamiento = st.sidebar.number_input(
 
 volumen_esponjado_real = volumen_util * factor_esponjamiento
 
-# 4. Logística y Planificación
-st.sidebar.subheader("🚛 Logística y Tiempos")
-distancia_botadero = st.sidebar.number_input("Distancia a Botadero (Km ida/vuelta)", value=35.0)
-capacidad_camion = st.sidebar.number_input("Capacidad del Camión (m³ tolva)", value=15.0)
-dias_totales = st.sidebar.number_input("Duración Calculada de Faena (días)", value=9)
+# 4. Logística de Transporte
+st.sidebar.subheader("🚛 Logística de Transporte")
+distancia_botadero = st.sidebar.number_input("Distancia a Botadero (Km ida/vuelta)", value=35.0, step=5.0)
+capacidad_camion = st.sidebar.number_input("Capacidad del Camión (m³ tolva)", value=15.0, step=1.0)
+tiempo_ciclo = st.sidebar.number_input("Tiempo estimado por ciclo (minutos)", value=90, step=5)
 
-# 5. Precios Movimiento de Tierra
+# 5. Planificación y Tiempos
+st.sidebar.subheader("⏱️ Planificación")
+rendimiento_base = st.sidebar.number_input("Rendimiento Base Excavación (m³/día)", value=350.0, step=25.0)
+dias_totales = st.sidebar.number_input("Duración Calculada de Faena (días)", value=9, step=1)
+
+# 6. Precios Movimiento de Tierra
 st.sidebar.subheader("7. Oferta Comercial Explotación")
-precio_unitario_neto = st.sidebar.number_input("Precio Unitario Final Neto ($/m³)", value=15750.0)
+precio_unitario_neto = st.sidebar.number_input("Precio Unitario Final Neto ($/m³)", value=15750.0, step=250.0)
 
-# 6. Condiciones Comerciales
+# 7. Condiciones Comerciales
 st.sidebar.subheader("📜 Condiciones")
-validez_oferta = st.sidebar.number_input("Validez Oferta (días)", value=15)
-minimo_horas_garantizadas = st.sidebar.number_input("Mínimo Horas Diarias Garantizadas", value=8)
+validez_oferta = st.sidebar.number_input("Validez Oferta (días)", value=15, step=1)
+minimo_horas_garantizadas = st.sidebar.number_input("Mínimo Horas Diarias Garantizadas", value=8, step=1)
 condicion_pago = st.sidebar.text_input("Condición de Pago", "A tratar según previo acuerdo")
 
-# Cálculos Derivados
+# --- CÁLCULOS TÉCNICO-COMERCIALES ---
 subtotal_mov_tierra = volumen_util * precio_unitario_neto
 oferta_total_neto = subtotal_mov_tierra + costo_total_demolicion
-total_bruto = oferta_total_neto * 1.19
+monto_iva = oferta_total_neto * 0.19
+total_bruto = oferta_total_neto + monto_iva
+
 num_viajes_estimados = int(-(-volumen_esponjado_real // capacidad_camion))
 
 texto_control_volumen = (
-    f"El volumen base se cubicará en banco mediante topografía. "
+    f"El volumen base se cubicará en banco mediante levantamiento topográfico (cota inicial vs. cota final). "
     f"Considerando un factor de esponjamiento de {factor_esponjamiento:.2f} ({clasificacion_suelo}), "
     f"se estima un volumen real a retirar en camión de {volumen_esponjado_real:,.0f} m³ "
-    f"({num_viajes_estimados} viajes aproximados en camión de {capacidad_camion:.0f} m³)."
+    f"({num_viajes_estimados} viajes de camiones de {capacidad_camion:.0f} m³, distancia botadero: {distancia_botadero:.0f} km)."
 )
 
 # --- VISTA PREVIA EN INTERFAZ ---
 st.subheader("📋 Vista Previa de la Propuesta Formal")
 st.markdown("**PRESUPUESTO DE SERVICIO DE DEMOLICIÓN, RETIRO Y MOVIMIENTO DE TIERRAS**")
 st.write(f"- **Para:** {cliente}")
-st.write(f"- **De:** EDOS SpA")
+st.write(f"- **De:** EDOS SpA ({representante})")
 st.write(f"- **Ubicación:** {ubicacion}")
-st.write(f"- **Plazo de Ejecución:** {dias_totales} días de faena")
+st.write(f"- **Plazo de Ejecución:** {dias_totales} días de faena (Rendimiento: {rendimiento_base:,.0f} m³/día)")
 st.write(f"- **Validez de la Oferta:** {validez_oferta} días corridos")
 
 # Tarjetas Métricas
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Volumen Banco (Topografía)", f"{volumen_util:,.0f} m³".replace(",", "."))
 col2.metric("Factor Esponjamiento", f"{factor_esponjamiento:.2f}")
 col3.metric("Volumen Estimado a Retirar", f"{volumen_esponjado_real:,.0f} m³".replace(",", "."))
+col4.metric("Viajes Estimados Camión", f"{num_viajes_estimados} viajes")
 
 # Tabla Resumen de Ítems
 items_tabla = []
@@ -189,11 +197,16 @@ items_tabla.append({
 })
 
 st.table(items_tabla)
-st.markdown(f"### **Total Oferta Neto: ${oferta_total_neto:,.0f}**".replace(",", "."))
+
+# Resumen de Valores (Neto, IVA, Bruto)
+c1, c2, c3 = st.columns(3)
+c1.markdown(f"**Neto:** ${oferta_total_neto:,.0f}".replace(",", "."))
+c2.markdown(f"**19% IVA:** ${monto_iva:,.0f}".replace(",", "."))
+c3.markdown(f"### **Total Bruto: ${total_bruto:,.0f}**".replace(",", "."))
 
 st.subheader("Condiciones Comerciales y Legales")
 st.write(f"- **Forma de Pago:** {condicion_pago}")
-st.write(f"- **Control de Volumen y Esponjamiento:** {texto_control_volumen}")
+st.write(f"- **Control de Volumen y Logística:** {texto_control_volumen}")
 st.write(f"- **Mínimo Diario Garantizado:** Se establece un mínimo de {minimo_horas_garantizadas} horas/día por equipo contratado.")
 st.write("- **Stand-by por Clima o Paralización Imputable:** En caso de paralización de la obra por causas ajenas a EDOS SpA o eventos meteorológicos, se facturará la tarifa de stand-by correspondiente al mínimo diario garantizado de los equipos en obra.")
 
@@ -218,7 +231,7 @@ def generar_pdf():
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Para: {cliente}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- De: {representante} (EDOS SpA)"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Ubicación: {ubicacion}"), ln=True)
-    pdf.cell(ancho_util, 6, limpiar_texto(f"- Plazo de Ejecución: {dias_totales} días de faena"), ln=True)
+    pdf.cell(ancho_util, 6, limpiar_texto(f"- Plazo de Ejecución: {dias_totales} días de faena (Rendimiento: {rendimiento_base:,.0f} m3/día)"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Validez de la Oferta: {validez_oferta} días corridos"), ln=True)
     pdf.ln(5)
 
@@ -242,10 +255,16 @@ def generar_pdf():
     pdf.cell(35, 7, limpiar_texto(f"${precio_unitario_neto:,.0f}".replace(",", ".")), 1, 0, "R")
     pdf.cell(35, 7, limpiar_texto(f"${subtotal_mov_tierra:,.0f}".replace(",", ".")), 1, 1, "R")
 
-    # Fila Total
+    # Filas Totales (Neto, IVA y Total Bruto)
     pdf.set_font("Helvetica", "B", 9)
-    pdf.cell(155, 7, limpiar_texto("TOTAL OFERTA NETO"), 1, 0, "R")
-    pdf.cell(35, 7, limpiar_texto(f"${oferta_total_neto:,.0f}".replace(",", ".")), 1, 1, "R")
+    pdf.cell(155, 6, limpiar_texto("SUBTOTAL NETO"), 1, 0, "R")
+    pdf.cell(35, 6, limpiar_texto(f"${oferta_total_neto:,.0f}".replace(",", ".")), 1, 1, "R")
+    
+    pdf.cell(155, 6, limpiar_texto("19% IVA"), 1, 0, "R")
+    pdf.cell(35, 6, limpiar_texto(f"${monto_iva:,.0f}".replace(",", ".")), 1, 1, "R")
+
+    pdf.cell(155, 7, limpiar_texto("TOTAL BRUTO"), 1, 0, "R")
+    pdf.cell(35, 7, limpiar_texto(f"${total_bruto:,.0f}".replace(",", ".")), 1, 1, "R")
 
     pdf.ln(8)
 
@@ -262,7 +281,7 @@ def generar_pdf():
     pdf.ln(2)
 
     pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Control de Volumen y Esponjamiento: {texto_control_volumen}"))
+    pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Control de Volumen y Logística: {texto_control_volumen}"))
     pdf.ln(2)
 
     pdf.set_x(pdf.l_margin)
