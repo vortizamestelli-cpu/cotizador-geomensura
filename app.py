@@ -81,7 +81,7 @@ st.set_page_config(
 )
 
 st.title("🚜 EDOS SpA - Generador Integral de Presupuestos")
-st.caption("Plataforma técnica-comercial para movimiento de tierras, demoliciones, arriendos, geomensura y obras civiles.")
+st.caption("Plataforma técnica-comercial para movimiento de tierras, demoliciones, arriendos de maquinaria, geomensura y obras civiles.")
 st.markdown("---")
 
 # ---------------------------------------------------------
@@ -99,9 +99,9 @@ with col_m2:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# SERVICIOS ADICIONALES (DEMOLICIÓN Y MAQUINARIA EXTRA)
+# SERVICIOS ADICIONALES (DEMOLICIÓN Y MAQUINARIA MÚLTIPLE)
 # ---------------------------------------------------------
-st.subheader("💥 Servicios Adicionales (Demolición y Arriendos)")
+st.subheader("💥 Servicios Adicionales (Demolición y Arriendos de Maquinaria)")
 col_serv1, col_serv2 = st.columns(2)
 
 with col_serv1:
@@ -118,15 +118,48 @@ with col_serv1:
         costo_total_demolicion = 0.0
 
 with col_serv2:
-    incluir_maq_adicional = st.checkbox("Incluir Arriendo / Maquinaria Adicional / Camión Interno", value=False)
+    incluir_maq_adicional = st.checkbox("Incluir Arriendo / Maquinaria Adicional / Camiones Internos", value=True)
+    costo_total_maq_adicional = 0.0
+    lista_maq_adicionales = []
+    
     if incluir_maq_adicional:
-        nombre_maq_adicional = st.text_input("Descripción del Equipo o Camión", "Camión Tolva Adicional / Arriendo")
-        cantidad_maq_adicional = st.number_input("Cantidad (Horas, Días o Viajes)", min_value=1.0, value=8.0, step=1.0)
-        unidad_maq_adicional = st.selectbox("Unidad de Cobro", ["Horas", "Días", "Mes", "Global", "Viajes"])
-        precio_unitario_maq_adicional = st.number_input("Precio Unitario Neto ($)", min_value=0.0, value=35000.0, step=1000.0)
-        costo_total_maq_adicional = cantidad_maq_adicional * precio_unitario_maq_adicional
-    else:
-        costo_total_maq_adicional = 0.0
+        num_equipos = st.number_input("N° de equipos o ítems adicionales", min_value=1, max_value=6, value=1, step=1)
+        
+        opciones_equipos = [
+            "Retroexcavadora",
+            "Minicargador (Skid Steer)",
+            "Motoniveladora",
+            "Camión Aljibe",
+            "Rodillo Compactador",
+            "Camión Tolva Adicional / Arriendo",
+            "Excavadora Mediana Adicional",
+            "Otro (Personalizado)"
+        ]
+        
+        for i in range(num_equipos):
+            st.markdown(f"**Equipo / Ítem #{i+1}**")
+            eq_col1, eq_col2, eq_col3, eq_col4 = st.columns([2, 1, 1, 1.5])
+            with eq_col1:
+                tipo_eq_sel = st.selectbox(f"Tipo de Equipo #{i+1}", opciones_equipos, key=f"tipo_eq_{i}")
+                if tipo_eq_sel == "Otro (Personalizado)":
+                    nombre_eq = st.text_input(f"Nombre equipo #{i+1}", f"Equipo Especial {i+1}", key=f"nom_eq_{i}")
+                else:
+                    nombre_eq = tipo_eq_sel
+            with eq_col2:
+                cant_eq = st.number_input("Cantidad", min_value=0.1, value=8.0, step=1.0, key=f"cant_eq_{i}")
+            with eq_col3:
+                unidad_eq = st.selectbox("Unidad", ["Horas", "Días", "Mes", "Global", "Viajes"], key=f"un_eq_{i}")
+            with eq_col4:
+                precio_eq = st.number_input("P. Unitario ($)", min_value=0.0, value=35000.0, step=1000.0, key=f"prec_eq_{i}")
+            
+            subtotal_eq = cant_eq * precio_eq
+            costo_total_maq_adicional += subtotal_eq
+            lista_maq_adicionales.append({
+                "descripcion": f"{nombre_eq} ({unidad_eq.lower()})",
+                "cantidad": cant_eq,
+                "unitario": precio_eq,
+                "total": subtotal_eq
+            })
 
 st.markdown("---")
 
@@ -141,7 +174,7 @@ criterio_medicion = st.radio(
         "Volumen Geométrico en Banco (Topografía)",
         "Volumen Esponjado (Sobre Camión)"
     ],
-    index=0
+    index=1
 )
 
 col_v1, col_v2, col_v3 = st.columns(3)
@@ -202,7 +235,7 @@ else:
 st.markdown("#### 🚛 Logística de Transporte y Botadero")
 col_l1, col_l2, col_l3 = st.columns(3)
 with col_l1:
-    distancia_botadero_km = st.number_input("Distancia a Botadero (Km ida/vuelta)", min_value=1.0, value=35.0, step=5.0)
+    distancia_botadero_km = st.number_input("Distancia a Botadero (Km ida/vuelta)", min_value=1.0, value=50.0, step=5.0)
 with col_l2:
     capacidad_camion = st.number_input("Capacidad del Camión (m³ tolva)", min_value=10.0, value=20.0, step=1.0)
 with col_l3:
@@ -222,14 +255,14 @@ col_t1, col_t2, col_t3 = st.columns(3)
 
 if modo_tiempo == "Calcular días según rendimiento estimado (m³/día)":
     with col_t1:
-        rendimiento_base = st.number_input(f"Rendimiento Base ({unidad_medicion}/día)", min_value=10.0, value=350.0, step=25.0)
+        rendimiento_base = st.number_input(f"Rendimiento Base ({unidad_medicion}/día)", min_value=10.0, value=550.0, step=25.0)
     m3_diarios_est = rendimiento_base * factor_dificultad_suelo
     duracion_dias = math.ceil(volumen_cobrar / m3_diarios_est) if m3_diarios_est > 0 else 1
     with col_t2:
         st.number_input("Duración Calculada de Faena (días)", value=duracion_dias, disabled=True)
 else:
     with col_t2:
-        duracion_dias = st.number_input("Días de Faena Impuestos por Mandante", min_value=1, value=11, step=1)
+        duracion_dias = st.number_input("Días de Faena Impuestos por Mandante", min_value=1, value=6, step=1)
     m3_diarios_est = volumen_cobrar / duracion_dias
     with col_t1:
         st.number_input(f"Rendimiento Requerido ({unidad_medicion}/día)", value=m3_diarios_est, disabled=True)
@@ -268,7 +301,7 @@ if modalidad_ejecucion == "Subcontrato Completo / Todo Incluido (Tarifa cerrada 
     costo_subcontrato_m3 = st.number_input(f"Costo del Subcontrato por {unidad_medicion} ($/m³)", min_value=0.0, value=13875.0, step=100.0)
     costo_interno_total = volumen_cobrar * costo_subcontrato_m3
 else:
-    costo_interno_total = volumen_cobrar * 12000.0  # Estimación interna desglosada genérica
+    costo_interno_total = volumen_cobrar * 12000.0
 
 st.markdown("---")
 
@@ -320,7 +353,7 @@ else:
     subtotal_mov_tierra = st.number_input("Precio Final Neto Objetivo Movimiento Tierra ($)", min_value=0.0, value=45895500.0)
     pu_neto_mandante = subtotal_mov_tierra / volumen_cobrar if volumen_cobrar > 0 else 0.0
 
-# Oferta Total Neto incluye Movimiento de Tierra + Demolición + Maquinaria Adicional
+# Oferta Total Neto = Mov. Tierra + Demolición + Todos los equipos adicionales
 oferta_total_neto = subtotal_mov_tierra + costo_total_demolicion + costo_total_maq_adicional
 
 iva_monto = oferta_total_neto * 0.19
@@ -362,12 +395,12 @@ if incluir_demolicion:
         "Total Neto Estimado": f"${costo_total_demolicion:,.0f}".replace(",", ".")
     })
 
-if incluir_maq_adicional:
+for eq in lista_maq_adicionales:
     items_tabla.append({
-        "Descripción": f"{nombre_maq_adicional} ({unidad_maq_adicional.lower()})",
-        "Cantidad Estimada": f"{cantidad_maq_adicional:,.0f}",
-        "P. Unitario Neto": f"${precio_unitario_maq_adicional:,.0f}".replace(",", "."),
-        "Total Neto Estimado": f"${costo_total_maq_adicional:,.0f}".replace(",", ".")
+        "Descripción": eq["descripcion"],
+        "Cantidad Estimada": f"{eq['cantidad']:,.0f}".replace(",", "."),
+        "P. Unitario Neto": f"${eq['unitario']:,.0f}".replace(",", "."),
+        "Total Neto Estimado": f"${eq['total']:,.0f}".replace(",", ".")
     })
 
 items_tabla.append({
@@ -454,11 +487,11 @@ def generar_pdf():
         pdf.cell(35, 7, limpiar_texto(f"${precio_unitario_demolicion:,.0f}".replace(",", ".")), 1, 0, "R")
         pdf.cell(35, 7, limpiar_texto(f"${costo_total_demolicion:,.0f}".replace(",", ".")), 1, 1, "R")
 
-    if incluir_maq_adicional:
-        pdf.cell(90, 7, limpiar_texto(f"{nombre_maq_adicional} ({unidad_maq_adicional.lower()})"), 1)
-        pdf.cell(30, 7, limpiar_texto(f"{cantidad_maq_adicional:,.0f}".replace(",", ".")), 1, 0, "C")
-        pdf.cell(35, 7, limpiar_texto(f"${precio_unitario_maq_adicional:,.0f}".replace(",", ".")), 1, 0, "R")
-        pdf.cell(35, 7, limpiar_texto(f"${costo_total_maq_adicional:,.0f}".replace(",", ".")), 1, 1, "R")
+    for eq in lista_maq_adicionales:
+        pdf.cell(90, 7, limpiar_texto(eq["descripcion"]), 1)
+        pdf.cell(30, 7, limpiar_texto(f"{eq['cantidad']:,.0f}".replace(",", ".")), 1, 0, "C")
+        pdf.cell(35, 7, limpiar_texto(f"${eq['unitario']:,.0f}".replace(",", ".")), 1, 0, "R")
+        pdf.cell(35, 7, limpiar_texto(f"${eq['total']:,.0f}".replace(",", ".")), 1, 1, "R")
 
     pdf.cell(90, 7, limpiar_texto(f"Retiro / excavación ({criterio_medicion.lower()})"), 1)
     pdf.cell(30, 7, limpiar_texto(f"{volumen_cobrar:,.0f} m3".replace(",", ".")), 1, 0, "C")
@@ -532,7 +565,8 @@ with col_bot2:
         "pu_neto_mandante": pu_neto_mandante,
         "oferta_total_neto": oferta_total_neto,
         "monto_iva": iva_monto,
-        "total_bruto": total_bruto
+        "total_bruto": total_bruto,
+        "maquinaria_adicional": lista_maq_adicionales
     }
     st.download_button(
         label="💾 Guardar parámetros (JSON)",
