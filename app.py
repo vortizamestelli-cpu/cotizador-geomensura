@@ -81,7 +81,7 @@ st.set_page_config(
 )
 
 st.title("🚜 EDOS SpA - Generador Integral de Presupuestos")
-st.caption("Plataforma técnica-comercial para movimiento de tierras, demoliciones, geomensura y obras civiles.")
+st.caption("Plataforma técnica-comercial para movimiento de tierras, demoliciones, arriendos, geomensura y obras civiles.")
 st.markdown("---")
 
 # ---------------------------------------------------------
@@ -99,25 +99,34 @@ with col_m2:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# SERVICIO OPCIONAL DE DEMOLICIÓN
+# SERVICIOS ADICIONALES (DEMOLICIÓN Y MAQUINARIA EXTRA)
 # ---------------------------------------------------------
-st.subheader("💥 Servicio de Demolición (Opcional)")
-incluir_demolicion = st.checkbox("Incluir Servicio de Demolición en esta Propuesta", value=False)
+st.subheader("💥 Servicios Adicionales (Demolición y Arriendos)")
+col_serv1, col_serv2 = st.columns(2)
 
-if incluir_demolicion:
-    col_d1, col_d2, col_d3 = st.columns(3)
-    with col_d1:
+with col_serv1:
+    incluir_demolicion = st.checkbox("Incluir Servicio de Demolición", value=False)
+    if incluir_demolicion:
         tipo_demolicion = st.selectbox(
-            "Tipo de Estructura a Demoler",
+            "Estructura a Demoler",
             ["Hormigón Armado", "Albañilería / Ladrillo", "Pavimentos / Asfalto", "Estructura Liviana / Mixta"]
         )
-    with col_d2:
-        volumen_demolicion = st.number_input("Volumen / Superficie a Demoler (m³ o m²)", min_value=1.0, value=150.0, step=10.0)
-    with col_d3:
-        precio_unitario_demolicion = st.number_input("Precio Unitario Demolición ($/m³ o $/m²)", min_value=0.0, value=22000.0, step=500.0)
-    costo_total_demolicion = volumen_demolicion * precio_unitario_demolicion
-else:
-    costo_total_demolicion = 0.0
+        volumen_demolicion = st.number_input("Volumen / Superficie Demolición (m³ o m²)", min_value=1.0, value=150.0, step=10.0)
+        precio_unitario_demolicion = st.number_input("Precio Unitario Demolición ($)", min_value=0.0, value=22000.0, step=500.0)
+        costo_total_demolicion = volumen_demolicion * precio_unitario_demolicion
+    else:
+        costo_total_demolicion = 0.0
+
+with col_serv2:
+    incluir_maq_adicional = st.checkbox("Incluir Arriendo / Maquinaria Adicional / Camión Interno", value=False)
+    if incluir_maq_adicional:
+        nombre_maq_adicional = st.text_input("Descripción del Equipo o Camión", "Camión Tolva Adicional / Arriendo")
+        cantidad_maq_adicional = st.number_input("Cantidad (Horas, Días o Viajes)", min_value=1.0, value=8.0, step=1.0)
+        unidad_maq_adicional = st.selectbox("Unidad de Cobro", ["Horas", "Días", "Mes", "Global", "Viajes"])
+        precio_unitario_maq_adicional = st.number_input("Precio Unitario Neto ($)", min_value=0.0, value=35000.0, step=1000.0)
+        costo_total_maq_adicional = cantidad_maq_adicional * precio_unitario_maq_adicional
+    else:
+        costo_total_maq_adicional = 0.0
 
 st.markdown("---")
 
@@ -138,7 +147,6 @@ criterio_medicion = st.radio(
 col_v1, col_v2, col_v3 = st.columns(3)
 
 with col_v1:
-    # Cambio dinámico del nombre del campo según lo elegido
     label_vol = "Volumen Geométrico en Banco (m³)" if "Banco" in criterio_medicion else "Volumen Esponjado a Retirar (m³)"
     volumen_ingresado = st.number_input(label_vol, min_value=1.0, value=2914.00, step=10.0)
 
@@ -157,7 +165,6 @@ st.info(
     f"_{info_suelo['desc']}_"
 )
 
-# Lógica corregida para la aplicación de esponjamiento
 if "Banco" in criterio_medicion:
     with col_v3:
         factor_esponjamiento = st.number_input(
@@ -181,10 +188,10 @@ else:
             "Factor Esponjamiento Aplicado",
             value=1.00,
             disabled=True,
-            help="Al medir sobre camión, el volumen ya está esponjado."
+            help="Al medir sobre camión, el volumen ya está esponjado y no se multiplica por factor."
         )
     volumen_cobrar = volumen_ingresado
-    volumen_esponjado_real = volumen_ingresado  # No se multiplica porque ya viene esponjado
+    volumen_esponjado_real = volumen_ingresado
     unidad_medicion = "m³ esponjados (sobre camión)"
     texto_control_volumen = (
         "El volumen final acumulado queda sujeto a control estricto mediante la emisión y firma "
@@ -227,7 +234,6 @@ else:
     with col_t1:
         st.number_input(f"Rendimiento Requerido ({unidad_medicion}/día)", value=m3_diarios_est, disabled=True)
 
-# Flujo teórico de camiones por día (usa el volumen esponjado real)
 viajes_totales = math.ceil(volumen_esponjado_real / capacidad_camion)
 viajes_camion_dia = math.ceil(viajes_totales / duracion_dias) if duracion_dias > 0 else viajes_totales
 camiones_simultaneos = math.ceil((viajes_camion_dia * (tiempo_ciclo_min / 60)) / 8)
@@ -257,88 +263,12 @@ modalidad_ejecucion = st.radio(
     index=1
 )
 
-costo_maquinaria = 0.0
-costo_combustible = 0.0
-costo_transporte = 0.0
-costo_paleteros = 0.0
-costo_aljibe = 0.0
-costo_topografia = 0.0
-costo_movilizacion = 0.0
-costo_prevencion_epp = 0.0
-costo_maquinaria_extra = 0.0
-detalles_maq_extra = []
-
+costo_interno_total = 0.0
 if modalidad_ejecucion == "Subcontrato Completo / Todo Incluido (Tarifa cerrada por m³)":
     costo_subcontrato_m3 = st.number_input(f"Costo del Subcontrato por {unidad_medicion} ($/m³)", min_value=0.0, value=13875.0, step=100.0)
     costo_interno_total = volumen_cobrar * costo_subcontrato_m3
-
 else:
-    with st.expander("⚙️ Maquinaria Principal de Excavación y Carga", expanded=True):
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        with col_m1:
-            num_excavadoras = st.number_input("N° Excavadoras", min_value=1, value=1, step=1)
-        with col_m2:
-            tarifa_excavadora_hr = st.number_input("Tarifa Hora Excavadora ($/hr)", min_value=0.0, value=48000.0, step=1000.0)
-        with col_m3:
-            precio_petroleo = st.number_input("Precio Petróleo ($/litro)", min_value=0.0, value=1150.0, step=10.0)
-        with col_m4:
-            consumo_l_hr = st.number_input("Consumo Excavadora (L/hr)", min_value=0.0, value=22.0, step=1.0)
-
-        horas_diarias_est = st.number_input("Horas operativas estimadas por día", min_value=1, value=8, step=1)
-        horas_totales_maquinaria = duracion_dias * horas_diarias_est * num_excavadoras
-        costo_maquinaria = horas_totales_maquinaria * tarifa_excavadora_hr
-        costo_combustible = horas_totales_maquinaria * consumo_l_hr * precio_petroleo
-
-    with st.expander("🛠️ Equipos Adicionales Solicitados", expanded=False):
-        incluye_extra = st.checkbox("¿Incluir maquinaria adicional?")
-        if incluye_extra:
-            num_equipos_extra = st.number_input("Tipos de equipos", min_value=1, max_value=5, value=1, step=1)
-            for i in range(num_equipos_extra):
-                col_e1, col_e2, col_e3, col_e4 = st.columns([2, 1.5, 1.5, 1.5])
-                with col_e1:
-                    nombre_eq = st.text_input(f"Equipo #{i+1}", "Retroexcavadora", key=f"eq_custom_{i}")
-                with col_e2:
-                    modalidad_tarifa = st.selectbox("Unidad", ["Valor por Hora", "Valor Diario"], key=f"eq_mod_{i}")
-                with col_e3:
-                    tarifa_eq = st.number_input("Tarifa ($)", value=35000.0, step=1000.0, key=f"eq_tar_{i}")
-                with col_e4:
-                    cant_tiempo = st.number_input("Cantidad", value=duracion_dias * 8, step=1, key=f"eq_cant_{i}")
-                
-                subtotal_eq = tarifa_eq * cant_tiempo
-                costo_maquinaria_extra += subtotal_eq
-                detalles_maq_extra.append({"equipo": nombre_eq, "subtotal": subtotal_eq})
-
-    with st.expander("🚚 Traslado Cama Baja, Transporte y Botadero", expanded=True):
-        col_tr1, col_tr2 = st.columns(2)
-        with col_tr1:
-            costo_movilizacion = st.number_input("Cama Baja (Movilización y Desmovilización) ($)", min_value=0.0, value=350000.0, step=25000.0)
-        with col_tr2:
-            tarifa_transporte_m3 = st.number_input(f"Tarifa transporte + botadero ($/{unidad_medicion})", min_value=0.0, value=3200.0, step=100.0)
-        costo_transporte = volumen_cobrar * tarifa_transporte_m3
-
-    with st.expander("🚧 Mitigaciones, Prevención de Riesgos y Topografía"):
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            incluye_aljibe = st.checkbox("Camión Aljibe (Polución)")
-            num_paleteros = st.number_input("N° Paleteros / Banderilleros", min_value=0, value=0, step=1)
-            valor_dia_paletero = st.number_input("Costo diario paletero ($/día)", min_value=0.0, value=35000.0)
-        with col_p2:
-            costo_prevencion_epp = st.number_input("Gastos EPP y Señalética PR ($)", min_value=0.0, value=120000.0)
-            incluye_topografia = st.checkbox("Topógrafo dedicado", value=True)
-            costo_topografia_global = st.number_input("Costo topografía ($)", min_value=0.0, value=150000.0)
-
-        if incluye_aljibe:
-            costo_aljibe = duracion_dias * 120000.0
-        if num_paleteros > 0:
-            costo_paleteros = num_paleteros * duracion_dias * valor_dia_paletero
-        if incluye_topografia:
-            costo_topografia = costo_topografia_global
-
-    costo_interno_total = (
-        costo_maquinaria + costo_combustible + costo_transporte +
-        costo_aljibe + costo_paleteros + costo_topografia +
-        costo_movilizacion + costo_prevencion_epp + costo_maquinaria_extra
-    )
+    costo_interno_total = volumen_cobrar * 12000.0  # Estimación interna desglosada genérica
 
 st.markdown("---")
 
@@ -358,16 +288,9 @@ with st.expander("🏦 Garantías, Pólizas y Factoring"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         incluye_poliza = st.checkbox("¿Exige Póliza de Fianza / Boleta Garantía?")
-        costo_poliza = 0.0
-        if incluye_poliza:
-            costo_poliza = st.number_input("Costo Póliza / Boleta ($)", min_value=0.0, value=180000.0)
-
+        costo_poliza = 180000.0 if incluye_poliza else 0.0
     with col_f2:
         incluye_factoring = st.checkbox("¿Aplica Cobro Vía Factoring?")
-        costo_factoring = 0.0
-        if incluye_factoring:
-            tasa_factoring_mensual = st.number_input("Tasa mensual (%)", min_value=0.1, value=2.2)
-            dias_anticipo = st.number_input("Días anticipo", min_value=1, value=30)
 
 st.markdown("---")
 
@@ -397,13 +320,9 @@ else:
     subtotal_mov_tierra = st.number_input("Precio Final Neto Objetivo Movimiento Tierra ($)", min_value=0.0, value=45895500.0)
     pu_neto_mandante = subtotal_mov_tierra / volumen_cobrar if volumen_cobrar > 0 else 0.0
 
-oferta_total_neto = subtotal_mov_tierra + costo_total_demolicion
+# Oferta Total Neto incluye Movimiento de Tierra + Demolición + Maquinaria Adicional
+oferta_total_neto = subtotal_mov_tierra + costo_total_demolicion + costo_total_maq_adicional
 
-if incluye_factoring:
-    tasa_diaria = (tasa_factoring_mensual / 100.0) / 30.0
-    costo_factoring = oferta_total_neto * (tasa_diaria * dias_anticipo)
-
-costo_interno_total += costo_poliza + costo_factoring
 iva_monto = oferta_total_neto * 0.19
 total_bruto = oferta_total_neto + iva_monto
 margen_monto = oferta_total_neto - costo_interno_total
@@ -426,7 +345,7 @@ st.markdown("---")
 # ---------------------------------------------------------
 st.subheader("📋 Vista Previa de la Propuesta Formal")
 
-st.markdown("**PRESUPUESTO DE SERVICIO DE DEMOLICIÓN Y MOVIMIENTO DE TIERRAS**")
+st.markdown("**PRESUPUESTO DE SERVICIO DE MOVIMIENTO DE TIERRAS Y OBRAS ANEXAS**")
 st.markdown(f"- **Para:** {cliente_nombre}")
 st.markdown(f"- **Atención:** {profesional_cliente}")
 st.markdown(f"- **De:** EDOS SpA ({representante})")
@@ -443,6 +362,14 @@ if incluir_demolicion:
         "Total Neto Estimado": f"${costo_total_demolicion:,.0f}".replace(",", ".")
     })
 
+if incluir_maq_adicional:
+    items_tabla.append({
+        "Descripción": f"{nombre_maq_adicional} ({unidad_maq_adicional.lower()})",
+        "Cantidad Estimada": f"{cantidad_maq_adicional:,.0f}",
+        "P. Unitario Neto": f"${precio_unitario_maq_adicional:,.0f}".replace(",", "."),
+        "Total Neto Estimado": f"${costo_total_maq_adicional:,.0f}".replace(",", ".")
+    })
+
 items_tabla.append({
     "Descripción": f"Servicio de retiro / excavación ({unidad_medicion})",
     "Cantidad Estimada": f"{volumen_cobrar:,.0f} m³".replace(",", "."),
@@ -452,7 +379,6 @@ items_tabla.append({
 
 st.table(items_tabla)
 
-# Cuadro con desglose de Subtotal Neto, IVA y Total Bruto
 col_t1, col_t2, col_t3 = st.columns(3)
 col_t1.write(f"**Subtotal Neto:** ${oferta_total_neto:,.0f}".replace(",", "."))
 col_t2.write(f"**IVA (19%):** ${iva_monto:,.0f}".replace(",", "."))
@@ -477,7 +403,6 @@ Junto con saludar, adjunto la propuesta comercial de EDOS SpA para el servicio d
 Resumen de la Oferta:
 - Volumen Estimado: {volumen_cobrar:,.0f} {unidad_medicion}
 - Plazo de Ejecución: {duracion_dias} días de faena
-- Precio Unitario Neto: ${pu_neto_mandante:,.0f} / m³
 - Subtotal Neto Oferta: ${oferta_total_neto:,.0f} CLP
 - Monto IVA (19%): ${iva_monto:,.0f} CLP
 - Total Bruto (incl. IVA): ${total_bruto:,.0f} CLP
@@ -493,7 +418,7 @@ dos.oficinacv@gmail.com
 
 
 # ---------------------------------------------------------
-# GENERACIÓN DE PDF CORREGIDA Y JSON
+# GENERACIÓN DE PDF Y JSON
 # ---------------------------------------------------------
 def generar_pdf():
     pdf = FPDF()
@@ -502,12 +427,10 @@ def generar_pdf():
     
     ancho_util = pdf.w - pdf.l_margin - pdf.r_margin
 
-    # Encabezado
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(ancho_util, 8, limpiar_texto("PRESUPUESTO DE SERVICIO DE DEMOLICION Y MOVIMIENTO DE TIERRAS"), ln=True, align="C")
+    pdf.cell(ancho_util, 8, limpiar_texto("PRESUPUESTO DE SERVICIO DE MOVIMIENTO DE TIERRAS Y OBRAS ANEXAS"), ln=True, align="C")
     pdf.ln(4)
 
-    # Datos Principales
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Para: {cliente_nombre}"), ln=True)
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Atención: {profesional_cliente}"), ln=True)
@@ -517,7 +440,6 @@ def generar_pdf():
     pdf.cell(ancho_util, 6, limpiar_texto(f"- Validez de la Oferta: {validez_oferta} días corridos"), ln=True)
     pdf.ln(5)
 
-    # Tabla de Resumen
     pdf.set_font("Helvetica", "B", 10)
     pdf.cell(90, 7, limpiar_texto("Descripción"), 1, 0, "C")
     pdf.cell(30, 7, limpiar_texto("Cantidad"), 1, 0, "C")
@@ -532,12 +454,17 @@ def generar_pdf():
         pdf.cell(35, 7, limpiar_texto(f"${precio_unitario_demolicion:,.0f}".replace(",", ".")), 1, 0, "R")
         pdf.cell(35, 7, limpiar_texto(f"${costo_total_demolicion:,.0f}".replace(",", ".")), 1, 1, "R")
 
+    if incluir_maq_adicional:
+        pdf.cell(90, 7, limpiar_texto(f"{nombre_maq_adicional} ({unidad_maq_adicional.lower()})"), 1)
+        pdf.cell(30, 7, limpiar_texto(f"{cantidad_maq_adicional:,.0f}".replace(",", ".")), 1, 0, "C")
+        pdf.cell(35, 7, limpiar_texto(f"${precio_unitario_maq_adicional:,.0f}".replace(",", ".")), 1, 0, "R")
+        pdf.cell(35, 7, limpiar_texto(f"${costo_total_maq_adicional:,.0f}".replace(",", ".")), 1, 1, "R")
+
     pdf.cell(90, 7, limpiar_texto(f"Retiro / excavación ({criterio_medicion.lower()})"), 1)
     pdf.cell(30, 7, limpiar_texto(f"{volumen_cobrar:,.0f} m3".replace(",", ".")), 1, 0, "C")
     pdf.cell(35, 7, limpiar_texto(f"${pu_neto_mandante:,.0f}".replace(",", ".")), 1, 0, "R")
     pdf.cell(35, 7, limpiar_texto(f"${subtotal_mov_tierra:,.0f}".replace(",", ".")), 1, 1, "R")
 
-    # Filas Totales (Neto, IVA y Total Bruto)
     pdf.set_font("Helvetica", "B", 9)
     pdf.cell(155, 6, limpiar_texto("SUBTOTAL NETO"), 1, 0, "R")
     pdf.cell(35, 6, limpiar_texto(f"${oferta_total_neto:,.0f}".replace(",", ".")), 1, 1, "R")
@@ -550,14 +477,12 @@ def generar_pdf():
 
     pdf.ln(8)
 
-    # Sección de Condiciones Comerciales
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 7, limpiar_texto("Condiciones Comerciales y Legales"), ln=True)
     pdf.ln(2)
 
     pdf.set_font("Helvetica", "", 9)
-    
     pdf.set_x(pdf.l_margin)
     pdf.multi_cell(ancho_util, 5, limpiar_texto(f"- Forma de Pago: {condicion_pago}"))
     pdf.ln(2)
@@ -574,7 +499,6 @@ def generar_pdf():
     pdf.multi_cell(ancho_util, 5, limpiar_texto("- Stand-by por Clima o Paralización Imputable: En caso de paralización de la obra por causas ajenas a EDOS SpA o eventos meteorológicos, se facturará la tarifa de stand-by correspondiente al mínimo diario garantizado de los equipos en obra."))
     pdf.ln(10)
 
-    # Firma
     pdf.set_font("Helvetica", "I", 10)
     pdf.set_x(pdf.l_margin)
     pdf.cell(ancho_util, 6, limpiar_texto(f"{representante} - EDOS SpA"), ln=True, align="R")
